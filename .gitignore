@@ -41,3 +41,13 @@ Desktop.ini
 # Rider / JetBrains
 .idea/
 *.sln.iml
+
+# Android local state and downloaded native dependency
+.gradle/
+local.properties
+android/app/libs/
+android/**/build/
+*.apk
+*.aab
+*.keystore
+*.jks
