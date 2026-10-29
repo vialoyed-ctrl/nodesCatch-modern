@@ -12,6 +12,13 @@ import java.util.*;
 import java.util.concurrent.*;
 
 @RunWith(AndroidJUnit4.class) public class NativeCoreTest {
+    @Test public void activityLaunches() throws Exception {
+        android.app.Instrumentation instrumentation=InstrumentationRegistry.getInstrumentation();
+        android.content.Intent intent=new android.content.Intent(instrumentation.getTargetContext(),MainActivity.class).addFlags(android.content.Intent.FLAG_ACTIVITY_NEW_TASK);
+        android.app.Activity activity=instrumentation.startActivitySync(intent);
+        try {instrumentation.waitForIdleSync();android.view.ViewGroup content=activity.findViewById(android.R.id.content);assertTrue(content.getChildCount()>0);}
+        finally {instrumentation.runOnMainSync(activity::finish);}
+    }
     @Test public void nativeDelayAndDownloadThroughNode() throws Exception {
         ServerSocket proxy=new ServerSocket(0,20,InetAddress.getByName("127.0.0.1"));ExecutorService server=Executors.newCachedThreadPool();
         server.execute(()->{while(!proxy.isClosed()){try{Socket socket=proxy.accept();server.execute(()->serve(socket));}catch(IOException ignored){break;}}});
@@ -19,6 +26,11 @@ import java.util.concurrent.*;
         List<Nodes.Node> nodes=Nodes.parse("http://127.0.0.1:"+proxy.getLocalPort()+"#Loopback");
         CoreEngine.Progress progress=new CoreEngine.Progress(){public void changed(Nodes.Node n){}public void message(String m){}};
         try {
+            List<Nodes.Node> modern=Nodes.parse("vless://00000000-0000-4000-8000-000000000001@example.com:443?security=reality&pbk=AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA&sid=&fp=chrome#Reality\n"
+                +"hy2://password@example.com:443?obfs=salamander&obfs-password=test#HY2\n"
+                +"anytls://password@example.com:443?sni=example.com#AnyTLS\n"
+                +"ss://MjAyMi1ibGFrZTMtYWVzLTEyOC1nY206QUFBQUFBQUFBQUFBQUFBQUFBQUFBQT09@example.com:443#SS2022");
+            engine.prepare(modern);
             engine.run(nodes,false,"http://192.0.2.1/ping?a=1&b=2",3,1,3000,progress);
             assertTrue("Real native delay failed: "+nodes.get(0).status,nodes.get(0).delay>=0);
             engine.run(nodes,true,"http://192.0.2.1/download",3,1,3000,progress);
