@@ -13,7 +13,17 @@ android {
     }
     compileOptions { sourceCompatibility JavaVersion.VERSION_17; targetCompatibility JavaVersion.VERSION_17 }
     packaging { jniLibs { useLegacyPackaging true } }
-    buildTypes { release { minifyEnabled false } }
+    signingConfigs {
+        release {
+            if (System.getenv('ANDROID_KEYSTORE_PASSWORD')) {
+                storeFile file(System.getenv('ANDROID_KEYSTORE_FILE'))
+                storePassword System.getenv('ANDROID_KEYSTORE_PASSWORD')
+                keyAlias 'nodescatch'
+                keyPassword System.getenv('ANDROID_KEYSTORE_PASSWORD')
+            }
+        }
+    }
+    buildTypes { release { minifyEnabled false; signingConfig signingConfigs.release } }
     testOptions { unitTests.returnDefaultValues = true }
 }
 dependencies {

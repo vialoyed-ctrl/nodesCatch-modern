@@ -21,6 +21,9 @@ jobs:
           distribution: temurin
           java-version: '21'
       - uses: android-actions/setup-android@v3
+        with:
+          packages: platform-tools
+          log-accepted-android-sdk-licenses: false
       - uses: gradle/actions/setup-gradle@v4
       - name: Download pinned native library
         run: |
@@ -28,9 +31,14 @@ jobs:
           curl -fL --retry 3 https://github.com/oviron/libmihomo-android/releases/download/v0.3.12/libmihomo-android-v0.3.12.aar -o app/libs/libmihomo-android-v0.3.12.aar
           echo 'c5f857d00319a7690b1dbf083387f5617454ed5a21eb87488644de2c18b7e42f  app/libs/libmihomo-android-v0.3.12.aar' | sha256sum -c -
       - name: Build APK and unit tests
+        env:
+          ANDROID_KEYSTORE_BASE64: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
+          ANDROID_KEYSTORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
+          ANDROID_KEYSTORE_FILE: ${{ runner.temp }}/nodescatch.jks
         run: |
+          if [ -n "$ANDROID_KEYSTORE_BASE64" ]; then printf '%s' "$ANDROID_KEYSTORE_BASE64" | base64 -d > "$ANDROID_KEYSTORE_FILE"; fi
           sdkmanager 'platforms;android-36' 'build-tools;36.0.0'
-          java -classpath gradle/wrapper/gradle-wrapper.jar org.gradle.wrapper.GradleWrapperMain --no-daemon testDebugUnitTest assembleDebug assembleDebugAndroidTest
+          java -classpath gradle/wrapper/gradle-wrapper.jar org.gradle.wrapper.GradleWrapperMain --no-daemon testDebugUnitTest assembleDebug assembleDebugAndroidTest assembleRelease
       - name: Enable emulator acceleration
         working-directory: .
         run: |
@@ -58,6 +66,7 @@ jobs:
           name: nodesCatch-android-v0.1.0
           path: |
             android/app/build/outputs/apk/debug/app-debug.apk
+            android/app/build/outputs/apk/release/app-release.apk
             android/app/build/test-results/testDebugUnitTest/
             android/instrumentation.txt
             android/screenshot.png
