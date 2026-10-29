@@ -1,7 +1,7 @@
 param(
     [string]$BinaryDirectory = (Join-Path $PSScriptRoot '../bin/Release/net48'),
     [string]$OutputDirectory = (Join-Path $PSScriptRoot '../dist'),
-    [string]$Version = '4.1.0'
+    [string]$Version = '4.1.1'
 )
 $ErrorActionPreference = 'Stop'
 $root = Split-Path $PSScriptRoot -Parent

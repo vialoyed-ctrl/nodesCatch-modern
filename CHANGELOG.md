@@ -1,5 +1,12 @@
 # Changelog
 
+## v4.1.1 — 2026-10-29
+
+- Add QQ direct-routing defaults to exported Mihomo configurations: qq.com, gtimg.com, qpic.cn and QQ.exe.
+- Keep the final MATCH,PROXY fallback after the direct rules and export rule mode.
+- Preserve existing speed-prefixed names and keep internal speed-test routing unchanged.
+- Add export routing regression checks and validate the generated configuration with Mihomo.
+
 ## v4.1.0 — 2026-10-29
 
 - Generate modern-node speed-test configuration directly for Mihomo.

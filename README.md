@@ -4,7 +4,7 @@ Windows 代理节点延迟、下载测速和导出工具。基于 [AHackerX/node
 
 ## 下载与启动
 
-前往 [Releases](https://github.com/vialoyed-ctrl/nodesCatch-modern/releases/latest) 下载 `nodesCatch-modern-v4.1.0-windows-x64.zip`，解压后双击 **Start.cmd**。
+前往 [Releases](https://github.com/vialoyed-ctrl/nodesCatch-modern/releases/latest) 下载 `nodesCatch-modern-v4.1.1-windows-x64.zip`，解压后双击 **Start.cmd**。
 
 需要 Windows x64 和 .NET Framework 4.8。首次启动需要连接 GitHub，脚本会从上游下载 Mihomo v1.19.33，并按固定 SHA256 检查下载文件；也会尝试安装可选的订阅转换器。无需管理员权限。内核和转换器未内置到本仓库的下载包，来源见 [第三方说明](THIRD_PARTY_NOTICES.md)。
 
@@ -24,6 +24,21 @@ Windows 代理节点延迟、下载测速和导出工具。基于 [AHackerX/node
    ```
 
 没有有效速度结果时保留原名，重复导出不叠加速度前缀。导出命名不改动列表中的原名。Mihomo 导出的重名会添加序号。
+
+从 v4.1.1 起，**导出 Mihomo 配置文件**会自动加入以下规则，并使用规则模式：
+
+```yaml
+rules:
+  - DOMAIN-SUFFIX,qq.com,DIRECT
+  - DOMAIN-SUFFIX,gtimg.com,DIRECT
+  - DOMAIN-SUFFIX,qpic.cn,DIRECT
+  - PROCESS-NAME,QQ.exe,DIRECT
+  - MATCH,PROXY
+```
+
+将导出的 YAML 导入 Clash Verge 后，常见 QQ 域名和可识别的 QQ.exe 流量会优先直连，其余连接走 PROXY。进程规则依赖客户端能够识别进程；域名规则可以匹配浏览器中的相关请求。更新规则后，重新建立的连接才按新规则路由。
+
+分享链接和 Base64 通用订阅只携带节点信息，无法附带分流规则；要自动带入规则，请使用 Mihomo 配置文件导出。
 
 软件自带独立的 Mihomo 进程，不需要打开其他 Clash 客户端。其他代理客户端的 TUN 模式可能影响测试路径。
 

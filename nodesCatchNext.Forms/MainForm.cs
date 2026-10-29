@@ -3425,7 +3425,7 @@ public class MainForm : Form
         if (Utils.IsNullOrEmpty(path)) return;
         try {
             File.WriteAllText(path, NativeMihomoConfig.BuildExport(config, lvSelecteds), Encoding.UTF8);
-            AppendText(notify: false, "保存成功，节点名称已添加平均速度前缀");
+            AppendText(notify: false, "保存成功，已添加平均速度前缀和 QQ 直连规则");
         }
         catch (Exception ex) { MessageBox.Show("导出配置文件失败：" + ex.Message); }
 	}
@@ -4628,7 +4628,7 @@ public class MainForm : Form
 		base.Margin = new System.Windows.Forms.Padding(5);
 		this.MinimumSize = new System.Drawing.Size(1760, 1330);
 		base.Name = "MainForm";
-		this.Text = "nodesCatch Modern - V4.1.0";
+		this.Text = "nodesCatch Modern - V4.1.1";
 		base.FormClosing += new System.Windows.Forms.FormClosingEventHandler(MainForm_FormClosing);
 		base.Load += new System.EventHandler(MainForm_Load);
 		base.ResizeEnd += new System.EventHandler(MainForm_ResizeEnd);

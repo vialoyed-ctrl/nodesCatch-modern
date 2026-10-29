@@ -39,12 +39,19 @@ class VerifyExport {
             n.testResult="";Check(ExportNaming.Name(n)==n.remarks,"missing result changed name");
             var selected=new[]{0,1,2,3,4,5};string export=NativeMihomoConfig.BuildExport(cfg,selected);
             var doc=JObject.Parse(export);var names=new HashSet<string>();
+            var rules=(JArray)doc["rules"];
+            string[] expectedRules={"DOMAIN-SUFFIX,qq.com,DIRECT","DOMAIN-SUFFIX,gtimg.com,DIRECT","DOMAIN-SUFFIX,qpic.cn,DIRECT","PROCESS-NAME,QQ.exe,DIRECT","MATCH,PROXY"};
+            Check((string)doc["mode"]=="rule","export must use rule mode");
+            Check(rules.Count==expectedRules.Length,"unexpected exported rule count");
+            for(int i=0;i<expectedRules.Length;i++) Check((string)rules[i]==expectedRules[i],"QQ direct rules must precede final proxy fallback");
+            var testConfig=JObject.Parse(NativeMihomoConfig.Build(cfg,selected));
+            Check(((JArray)testConfig["rules"]).Count==1 && (string)testConfig["rules"][0]=="MATCH,PROXY","export rules must not change the speed-test routing");
             foreach(JObject proxy in doc["proxies"]) Check(names.Add((string)proxy["name"]),"duplicate name");
             foreach(string name in doc["proxy-groups"][0]["proxies"]) Check(names.Contains(name),"broken group reference");
             string temp=Path.Combine(Path.GetTempPath(),"nodesCatch-export-"+Guid.NewGuid().ToString("N")); Directory.CreateDirectory(temp); string path=Path.Combine(temp,"export.yaml"); File.WriteAllText(path,export);
             var p=Process.Start(new ProcessStartInfo(Path.Combine(root,"mihomo-nodes.exe"),"-t -d \""+temp+"\" -f \""+path+"\"") {UseShellExecute=false,CreateNoWindow=true,RedirectStandardOutput=true,RedirectStandardError=true});
             string output=p.StandardOutput.ReadToEnd()+p.StandardError.ReadToEnd();p.WaitForExit();Check(p.ExitCode==0,output);
-            Console.WriteLine("PASS: 6 protocol exports, Unicode and quotes, source names unchanged, invalid/missing speeds, KB/s, repeated prefix, decimal comma, duplicate names, group references, Mihomo validation");
+            Console.WriteLine("PASS: 6 protocol exports, Unicode and quotes, source names unchanged, invalid/missing speeds, KB/s, repeated prefix, decimal comma, duplicate names, group references, QQ direct rule order, isolated speed-test routing, Mihomo validation");
             return 0;
         } catch(Exception e) {Console.WriteLine(e);return 1;}
     }

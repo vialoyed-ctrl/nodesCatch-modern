@@ -30,7 +30,12 @@ public static class NativeMihomoConfig
             ["mixed-port"] = 7890, ["allow-lan"] = false, ["mode"] = "rule", ["log-level"] = "info",
             ["proxies"] = proxies,
             ["proxy-groups"] = new JArray(new JObject { ["name"] = "PROXY", ["type"] = "select", ["proxies"] = names }),
-            ["rules"] = new JArray("MATCH,PROXY")
+            ["rules"] = new JArray(
+                "DOMAIN-SUFFIX,qq.com,DIRECT",
+                "DOMAIN-SUFFIX,gtimg.com,DIRECT",
+                "DOMAIN-SUFFIX,qpic.cn,DIRECT",
+                "PROCESS-NAME,QQ.exe,DIRECT",
+                "MATCH,PROXY")
         }.ToString(Formatting.Indented);
     }
 
