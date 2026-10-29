@@ -29,4 +29,8 @@ public class NodesTest {
         Nodes.Node ipv6=Nodes.parse("vless://"+UUID+"@[2001:db8::1]:443?type=grpc&security=tls&serviceName=hello#IPv6").get(0);assertEquals("2001:db8::1",ipv6.proxy.getString("server"));assertEquals("hello",ipv6.proxy.getJSONObject("grpc-opts").getString("grpc-service-name"));
         JSONObject v=new JSONObject().put("add","example.com").put("port",443).put("id",UUID).put("ps","测试").put("net","ws").put("path","/hello").put("host","example.com").put("tls","tls");Nodes.Node vm=Nodes.parse("vmess://"+Base64.getEncoder().encodeToString(v.toString().getBytes(StandardCharsets.UTF_8))).get(0);assertEquals("测试",vm.name());assertTrue(vm.proxy.getBoolean("tls"));
     }
+    @Test public void emptyNamesAndHttpCredentials() throws Exception {
+        Nodes.Node n=Nodes.parse("http://user:pass%3Aword@example.com:8080#").get(0);assertFalse(n.name().isEmpty());
+        String exported=Nodes.links(Collections.singletonList(n),false);assertTrue(exported.contains("user:pass%3Aword@"));Nodes.Node round=Nodes.parse(exported).get(0);assertEquals("pass:word",round.proxy.getString("password"));
+    }
 }

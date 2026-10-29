@@ -43,7 +43,7 @@ public final class MainActivity extends Activity {
     private int dp(int n){return (int)(n*getResources().getDisplayMetrics().density+.5f);}
     private TextView label(String text,int size,int color){TextView t=new TextView(this);t.setText(text);t.setTextSize(size);t.setTextColor(color);return t;}
     private GradientDrawable shape(int color,int radius){GradientDrawable d=new GradientDrawable();d.setColor(color);d.setCornerRadius(dp(radius));return d;}
-    private Button button(String text,Runnable run){Button b=new Button(this);b.setText(text);b.setTextSize(12);b.setTextColor(TEAL);b.setMinWidth(0);b.setMinimumWidth(0);b.setPadding(dp(8),0,dp(8),0);b.setAllCaps(false);b.setOnClickListener(v->run.run());return b;}
+    private Button button(String text,Runnable run){Button b=new Button(this);b.setText(text);b.setTextSize(12);b.setTextColor(TEAL);b.setMinWidth(0);b.setMinimumWidth(0);b.setPadding(dp(8),0,dp(8),0);b.setAllCaps(false);b.setBackground(shape(Color.rgb(225,244,242),8));b.setStateListAnimator(null);b.setOnClickListener(v->run.run());return b;}
     private boolean idle(){if(busy){toast("请先停止当前测速");return false;}return true;}
     private void toast(String text){Toast.makeText(this,text,Toast.LENGTH_LONG).show();}
     private void error(Exception e){new AlertDialog.Builder(this).setTitle("操作未完成").setMessage(e.getMessage()==null?e.toString():e.getMessage()).setPositiveButton("知道了",null).show();}

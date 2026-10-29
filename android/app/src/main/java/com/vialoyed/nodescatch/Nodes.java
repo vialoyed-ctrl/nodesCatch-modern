@@ -59,7 +59,7 @@ public final class Nodes {
     }
     private static void add(List<Node> list,JSONObject p) throws Exception {
         if(!p.has("type")||!p.has("server")||p.optInt("port")<1||p.optInt("port")>65535) throw new IllegalArgumentException("节点缺少类型、服务器或有效端口");
-        if(!p.has("name")) p.put("name",p.optString("type")+" "+p.optString("server"));
+        if(p.optString("name").trim().isEmpty()) p.put("name",p.optString("type")+" "+p.optString("server"));
         Node n=new Node(); n.proxy=p; list.add(n);
     }
     private static String decode(String s) {s=s.replaceAll("\\s",""); int remainder=s.length()%4;if(remainder!=0)s+="====".substring(remainder); return new String(Base64.getDecoder().decode(s.replace('-','+').replace('_','/')),StandardCharsets.UTF_8);}
@@ -127,12 +127,13 @@ public final class Nodes {
         if(type.equals("ss")){if(p.has("plugin"))throw new IllegalArgumentException("带插件的 SS 节点请使用 YAML 导出以保留全部参数");String auth=p.getString("cipher")+":"+p.getString("password");return "ss://"+Base64.getEncoder().withoutPadding().encodeToString(auth.getBytes(StandardCharsets.UTF_8))+"@"+address+"#"+enc(name);}
         if(!Arrays.asList("vless","trojan","hysteria2","anytls","http","socks5").contains(type))throw new IllegalArgumentException(type+" 请使用完整 YAML 导出");
         Map<String,String> q=new LinkedHashMap<>();String auth=type.equals("vless")?p.getString("uuid"):p.optString("password");String network=p.optString("network","tcp");
-        if(type.equals("http")||type.equals("socks5")) auth=p.optString("username")+":"+p.optString("password");
+        boolean separateCredentials=type.equals("http")||type.equals("socks5");
         if(type.equals("vless")||type.equals("trojan")){q.put("type",network);q.put("security",p.has("reality-opts")?"reality":p.optBoolean("tls")||type.equals("trojan")?"tls":"none");}
         for(String[] pair:new String[][]{{"sni","sni"},{"servername","sni"},{"flow","flow"},{"client-fingerprint","fp"},{"obfs","obfs"},{"obfs-password","obfs-password"},{"fingerprint","pinSHA256"}})if(p.has(pair[0]))q.put(pair[1],p.getString(pair[0]));
-        if(p.has("skip-cert-verify"))q.put("insecure",p.optBoolean("skip-cert-verify")?"1":"0");JSONObject reality=p.optJSONObject("reality-opts");if(reality!=null){q.put("pbk",reality.getString("public-key"));q.put("sid",reality.optString("short-id"));}
+        if(p.has("skip-cert-verify"))q.put("insecure",p.optBoolean("skip-cert-verify")?"1":"0");JSONArray alpn=p.optJSONArray("alpn");if(alpn!=null){List<String> values=new ArrayList<>();for(int i=0;i<alpn.length();i++)values.add(alpn.getString(i));q.put("alpn",String.join(",",values));}JSONObject reality=p.optJSONObject("reality-opts");if(reality!=null){q.put("pbk",reality.getString("public-key"));q.put("sid",reality.optString("short-id"));}
         JSONObject ws=p.optJSONObject("ws-opts"),grpc=p.optJSONObject("grpc-opts"),h2=p.optJSONObject("h2-opts");if(ws!=null){q.put("path",ws.optString("path","/"));if(ws.optJSONObject("headers")!=null)q.put("host",ws.getJSONObject("headers").optString("Host"));}if(grpc!=null)q.put("serviceName",grpc.optString("grpc-service-name"));if(h2!=null){q.put("path",h2.optString("path","/"));JSONArray hosts=h2.optJSONArray("host");if(hosts!=null){List<String> a=new ArrayList<>();for(int i=0;i<hosts.length();i++)a.add(hosts.getString(i));q.put("host",String.join(",",a));}}
         StringBuilder query=new StringBuilder();for(Map.Entry<String,String> pair:q.entrySet()){if(query.length()>0)query.append('&');query.append(enc(pair.getKey())).append('=').append(enc(pair.getValue()));}
-        return (type.equals("http")&&p.optBoolean("tls")?"https":type)+"://"+enc(auth)+"@"+address+"?"+query+"#"+enc(name);
+        String credentials=separateCredentials?enc(p.optString("username"))+":"+enc(p.optString("password")):enc(auth);
+        return (type.equals("http")&&p.optBoolean("tls")?"https":type)+"://"+credentials+"@"+address+"?"+query+"#"+enc(name);
     }
 }
