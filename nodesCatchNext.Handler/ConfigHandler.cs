@@ -109,11 +109,11 @@ internal class ConfigHandler
 		}
 		if (Utils.IsNullOrEmpty(config.speedTestUrl))
 		{
-			config.speedTestUrl = "https://cdn.kernel.org/pub/linux/kernel/v6.x/linux-6.2.15.tar.xz";
+			config.speedTestUrl = "https://proof.ovh.net/files/100Mb.dat";
 		}
 		if (Utils.IsNullOrEmpty(config.speedPingTestUrl))
 		{
-			config.speedPingTestUrl = "https://www.cloudflare.com/cdn-cgi/trace";
+			config.speedPingTestUrl = "https://www.gstatic.com/generate_204";
 		}
 		if (Utils.IsNullOrEmpty(config.Timeout))
 		{
@@ -907,9 +907,10 @@ internal class ConfigHandler
 			HttpWebRequest httpWebRequest = (HttpWebRequest)WebRequest.Create(uri);
 			httpWebRequest.Method = method;
 			httpWebRequest.ContentType = "application/json";
-			httpWebRequest.Timeout = 300;
-			httpWebRequest.ReadWriteTimeout = 300;
-			httpWebRequest.ContinueTimeout = 300;
+			httpWebRequest.Proxy = null;
+			httpWebRequest.Timeout = 10000;
+			httpWebRequest.ReadWriteTimeout = 10000;
+			httpWebRequest.ContinueTimeout = 10000;
 			byte[] bytes = Encoding.UTF8.GetBytes(args);
 			httpWebRequest.ContentLength = bytes.Length;
 			using (Stream stream = httpWebRequest.GetRequestStream())

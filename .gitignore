@@ -3,6 +3,7 @@ bin/
 obj/
 [Dd]ebug/
 [Rr]elease/
+!/release/
 
 # Visual Studio
 .vs/
@@ -16,6 +17,18 @@ obj/
 # NuGet
 packages/
 *.nupkg
+
+# Private runtime state and release binaries
+nodeConfig.json
+config/
+subconverter/
+*.log
+*.exe
+*.dll
+dist/
+*.zip
+*.mmdb
+cache.db
 
 # Designer generated files (not used in this project)
 *.resx

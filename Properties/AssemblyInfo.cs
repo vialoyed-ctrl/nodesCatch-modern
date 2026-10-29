@@ -5,7 +5,7 @@ using System.Runtime.InteropServices;
 using System.Security;
 using System.Security.Permissions;
 
-[assembly: AssemblyTitle("nodesCatchNext")]
+[assembly: AssemblyTitle("nodesCatch Modern")]
 [assembly: AssemblyDescription("")]
 [assembly: AssemblyConfiguration("")]
 [assembly: AssemblyCompany("AHackerX")]
@@ -14,5 +14,5 @@ using System.Security.Permissions;
 [assembly: AssemblyTrademark("")]
 [assembly: ComVisible(false)]
 [assembly: Guid("5aeca4db-06bc-42b0-ad60-f0516e37447c")]
-[assembly: AssemblyFileVersion("4.0.0.0")]
-[assembly: AssemblyVersion("4.0.0.0")]
+[assembly: AssemblyFileVersion("4.1.0.0")]
+[assembly: AssemblyVersion("4.1.0.0")]

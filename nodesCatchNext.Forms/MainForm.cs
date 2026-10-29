@@ -866,7 +866,7 @@ public class MainForm : Form
 		base.Size = config.uiItem.mainSize;
 		v2rayHandler = new V2rayHandler();
 		v2rayHandler.ProcessEvent += v2rayHandler_ProcessEvent;
-		v2rayHandler.ClashStart("-d ./config -ext-ctl 127.0.0.1:40001");
+		v2rayHandler.ClashStart("-d ./config -ext-ctl 127.0.0.1:" + config.externalControllerPort);
 		subconverHandler = new SubconverHandler();
 		subconverHandler.ProcessEvent += v2rayHandler_ProcessEvent;
 		subconverHandler.SubconverStartNew();
@@ -1148,32 +1148,8 @@ public class MainForm : Form
 			return;
 		}
 		int pid = -1;
-		bool flag = false;
-		foreach (int lvSelected in lvSelecteds)
-		{
-			if (lvSelected >= 0 && lvSelected < config.vmess.Count && config.vmess[lvSelected].configType == 11)
-			{
-				flag = true;
-				break;
-			}
-		}
-		if ((actionType == "realping" && config.ThreadNum == 0) || (actionType == "speedtest" && config.DownloadThreadNum == 0) || actionType == "httpsdelay" || flag)
-		{
-			try
-			{
-				createYamlConfig();
-			}
-			catch (Exception ex)
-			{
-				MessageBox.Show(ex.Message, "出现异常");
-				return;
-			}
-		}
-		else if ((actionType == "realping" && config.ThreadNum == 1) || (actionType == "speedtest" && config.DownloadThreadNum == 1))
-		{
-			AppendText(notify: false, "单线程模式仅支持多线程测速，请将线程数设置为0");
-			return;
-		}
+        try { createYamlConfig(); }
+        catch (Exception ex) { MessageBox.Show(ex.Message, "出现异常"); return; }
 		speedtestNodeMap.Clear();
 		foreach (int lvSelected2 in lvSelecteds)
 		{
@@ -1303,275 +1279,15 @@ public class MainForm : Form
 
 	public void createYamlConfig()
 	{
-		int externalControllerPort = config.externalControllerPort;
-		string text = Guid.NewGuid().ToString("N");
-		string path = Utils.GetPath("subconverter\\temp_" + text + ".txt");
-		string text2 = "";
-		string text3 = "";
-		string path2 = Utils.GetPath("config\\temp.yaml");
-		try
-		{
-			if (!ConfigHandler.TcpClientCheck("127.0.0.1", externalControllerPort))
-			{
-				throw new Exception("无法链接到Mihomo内核，请确认：\n1. mihomo-nodes.exe 文件是否存在于程序目录\n2. 端口 " + externalControllerPort + " 是否被占用\n3. 尝试重新打开测速软件");
-			}
-			if (!ConfigHandler.TcpClientCheck("127.0.0.1", 25500))
-			{
-				throw new Exception("无法链接到subconverter(端口:25500)，请确认：\n1. subconverter\\subconverter.exe 文件是否存在\n2. 端口 25500 是否被占用\n3. 尝试重新打开测速软件");
-			}
-			StringBuilder stringBuilder = new StringBuilder();
-			List<VmessItem> listAnyTLS = new List<VmessItem>();
-			List<string> listAnyTLSNames = new List<string>();
-			List<VmessItem> listVlessReality = new List<VmessItem>();
-			List<string> listVlessRealityNames = new List<string>();
-			foreach (int lvSelected in lvSelecteds)
-			{
-				if (lvSelected >= 0 && lvSelected < config.vmess.Count)
-				{
-					VmessItem vmessItem = config.vmess[lvSelected];
-					// AnyTLS 节点直接生成 YAML
-					if (vmessItem.configType == 12)
-					{
-						string item = (config.GetLocalPort() + lvSelected).ToString();
-						listAnyTLS.Add(vmessItem);
-						listAnyTLSNames.Add(item);
-						continue;
-					}
-					// VLESS Reality 节点直接生成 YAML（绕过 subconverter）
-					// 检测条件：configType == 5 (VLESS) 且 streamSecurity == "reality" 且 publicKey 非空 且 shortId 非空
-					// Mihomo 要求 short-id 必须有效，不能为空
-					bool isVlessReality = vmessItem.configType == 5 && 
-						vmessItem.streamSecurity == "reality" && 
-						!string.IsNullOrEmpty(vmessItem.publicKey) &&
-						!string.IsNullOrEmpty(vmessItem.shortId);
-					
-					// 检测是否为有问题的 Reality 节点（有 publicKey 但没有 shortId）
-					// 这类节点不能发送给 subconverter，否则会生成无效的配置
-					bool isBrokenReality = vmessItem.configType == 5 && 
-						vmessItem.streamSecurity == "reality" && 
-						!string.IsNullOrEmpty(vmessItem.publicKey) &&
-						string.IsNullOrEmpty(vmessItem.shortId);
-					
-					if (isVlessReality)
-					{
-						string item = (config.GetLocalPort() + lvSelected).ToString();
-						listVlessReality.Add(vmessItem);
-						listVlessRealityNames.Add(item);
-						continue;
-					}
-					
-					// 跳过有问题的 Reality 节点（不发送给 subconverter）
-					if (isBrokenReality)
-					{
-						continue;
-					}
-				}
-				string shareUrl = ShareHandler.GetShareUrl(config, lvSelected, changRemark: true);
-				if (!Utils.IsNullOrEmpty(shareUrl))
-				{
-					stringBuilder.Append(shareUrl);
-					stringBuilder.AppendLine();
-				}
-			}
-			string text4 = "";
-			if (stringBuilder.Length > 0)
-			{
-				stringBuilder.Insert(0, "ss://YWVzLTI1Ni1nY206ZmFCQW9ENTRrODdVSkc3QDEuMS4xLjE6NjY2#%e5%8d%a0%e4%bd%8d%e8%8a%82%e7%82%b9" + Environment.NewLine);
-				File.WriteAllText(path, Utils.Base64Encode(stringBuilder.ToString()), Encoding.UTF8);
-				HttpWebRequest obj = (HttpWebRequest)WebRequest.Create($"http://127.0.0.1:{25500}/sub?target=clash&url=temp_{text}.txt&insert=false&list=true");
-				obj.Method = "GET";
-				obj.Timeout = 10000;
-				obj.ReadWriteTimeout = 10000;
-				obj.ContinueTimeout = 10000;
-				using StreamReader streamReader = new StreamReader(obj.GetResponse().GetResponseStream(), Encoding.UTF8);
-				text4 = streamReader.ReadToEnd();
-			}
-			else
-			{
-				text4 = "mixed-port: 40000\r\nmode: Global\r\nlog-level: info\r\nexternal-controller: 127.0.0.1:" + externalControllerPort + "\r\nproxies:\r\nproxy-groups:\r\n  - name: PROXY\r\n    type: select\r\n    proxies:\r\nrules:\r\n  - MATCH,PROXY\r\n";
-			}
-			// 生成 AnyTLS 节点的 YAML 配置
-			if (listAnyTLS.Count > 0)
-			{
-				StringBuilder stringBuilder2 = new StringBuilder();
-				StringBuilder stringBuilder3 = new StringBuilder();
-				for (int i = 0; i < listAnyTLS.Count; i++)
-				{
-					VmessItem vmessItem2 = listAnyTLS[i];
-					string text5 = listAnyTLSNames[i];
-					bool flag = vmessItem2.allowInsecure == "true" || vmessItem2.allowInsecure == "1";
-					stringBuilder2.AppendLine("  - name: \"" + text5 + "\"");
-					stringBuilder2.AppendLine("    type: anytls");
-					stringBuilder2.AppendLine("    server: " + vmessItem2.address);
-					stringBuilder2.AppendLine($"    port: {vmessItem2.port}");
-					stringBuilder2.AppendLine("    password: \"" + vmessItem2.id + "\"");
-					if (!string.IsNullOrEmpty(vmessItem2.sni))
-					{
-						stringBuilder2.AppendLine("    sni: " + vmessItem2.sni);
-					}
-					stringBuilder2.AppendLine("    skip-cert-verify: " + flag.ToString().ToLower());
-					stringBuilder2.AppendLine("    udp: true");
-					stringBuilder3.AppendLine("      - \"" + text5 + "\"");
-				}
-				int num = text4.IndexOf("proxies:");
-				if (num >= 0)
-				{
-					int startIndex = text4.IndexOf("\n", num) + 1;
-					text4 = text4.Insert(startIndex, stringBuilder2.ToString());
-				}
-				int num2 = text4.IndexOf("proxy-groups:");
-				if (num2 >= 0)
-				{
-					int num3 = text4.IndexOf("proxies:", num2);
-					if (num3 >= 0)
-					{
-						int startIndex2 = text4.IndexOf("\n", num3) + 1;
-						text4 = text4.Insert(startIndex2, stringBuilder3.ToString());
-					}
-				}
-			}
-			// 生成 VLESS Reality 节点的 YAML 配置
-			if (listVlessReality.Count > 0)
-			{
-				StringBuilder sbVlessProxies = new StringBuilder();
-				StringBuilder sbVlessProxyNames = new StringBuilder();
-				for (int i = 0; i < listVlessReality.Count; i++)
-				{
-					VmessItem item = listVlessReality[i];
-					string proxyName = listVlessRealityNames[i];
-					bool skipCertVerify = item.allowInsecure == "true" || item.allowInsecure == "1";
-					
-					sbVlessProxies.AppendLine("  - name: \"" + proxyName + "\"");
-					sbVlessProxies.AppendLine("    type: vless");
-					sbVlessProxies.AppendLine("    server: " + item.address);
-					sbVlessProxies.AppendLine($"    port: {item.port}");
-					sbVlessProxies.AppendLine("    uuid: \"" + item.id + "\"");
-					sbVlessProxies.AppendLine("    network: " + (string.IsNullOrEmpty(item.network) ? "tcp" : item.network));
-					sbVlessProxies.AppendLine("    tls: true");
-					sbVlessProxies.AppendLine("    udp: true");
-					
-					// flow (xtls-rprx-vision)
-					if (!string.IsNullOrEmpty(item.flow))
-					{
-						sbVlessProxies.AppendLine("    flow: " + item.flow);
-					}
-					
-					// client-fingerprint
-					string fingerprint = string.IsNullOrEmpty(item.fingerprint) ? "chrome" : item.fingerprint;
-					sbVlessProxies.AppendLine("    client-fingerprint: " + fingerprint);
-					
-					// servername (SNI)
-					if (!string.IsNullOrEmpty(item.sni))
-					{
-						sbVlessProxies.AppendLine("    servername: " + item.sni);
-					}
-					
-					sbVlessProxies.AppendLine("    skip-cert-verify: " + skipCertVerify.ToString().ToLower());
-					
-					// Reality 配置
-					sbVlessProxies.AppendLine("    reality-opts:");
-					if (!string.IsNullOrEmpty(item.publicKey))
-					{
-						sbVlessProxies.AppendLine("      public-key: " + item.publicKey);
-					}
-					// short-id 只在非空时输出（Mihomo 不接受空的 short-id）
-					// 必须用引号包裹，否则 YAML 会把 "01" 解析为数字 1
-					if (!string.IsNullOrEmpty(item.shortId))
-					{
-						sbVlessProxies.AppendLine("      short-id: \"" + item.shortId + "\"");
-					}
-					
-					sbVlessProxyNames.AppendLine("      - \"" + proxyName + "\"");
-				}
-				
-				int num = text4.IndexOf("proxies:");
-				if (num >= 0)
-				{
-					int startIndex = text4.IndexOf("\n", num) + 1;
-					text4 = text4.Insert(startIndex, sbVlessProxies.ToString());
-				}
-				int num2 = text4.IndexOf("proxy-groups:");
-				if (num2 >= 0)
-				{
-					int num3 = text4.IndexOf("proxies:", num2);
-					if (num3 >= 0)
-					{
-						int startIndex2 = text4.IndexOf("\n", num3) + 1;
-						text4 = text4.Insert(startIndex2, sbVlessProxyNames.ToString());
-					}
-				}
-			}
-			int totalNativeNodes = listAnyTLS.Count + listVlessReality.Count;
-			if (string.IsNullOrEmpty(text4) || (!text4.Contains("proxies:") && totalNativeNodes == 0))
-			{
-				throw new Exception("没有可用测速节点");
-			}
-			File.WriteAllText(path2, text4, Encoding.UTF8);
-			string nativeNodeInfo = "";
-			if (listAnyTLS.Count > 0) nativeNodeInfo += $"{listAnyTLS.Count} 个 AnyTLS";
-			if (listVlessReality.Count > 0)
-			{
-				if (nativeNodeInfo.Length > 0) nativeNodeInfo += ", ";
-				nativeNodeInfo += $"{listVlessReality.Count} 个 VLESS Reality";
-			}
-			if (nativeNodeInfo.Length > 0)
-			{
-				ShowMsg($"Mihomo配置文件生成成功（含 {nativeNodeInfo} 节点）");
-			}
-			else
-			{
-				ShowMsg("Mihomo配置文件生成成功");
-			}
-			string args = JsonConvert.SerializeObject(new
-			{
-				path = Path.GetFullPath(path2).Replace("\\", "/")
-			}, Formatting.None);
-			text3 = "http://127.0.0.1:" + externalControllerPort + "/configs";
-			text2 = ConfigHandler.sendReq(args, text3, "PUT");
-			if (text2 != "204")
-			{
-				throw new Exception("切换测速配置文件失败！" + text2);
-			}
-			// 检查 Mihomo 内核是否仍存活
-			if (!ConfigHandler.TcpClientCheck("127.0.0.1", int.Parse(config.externalController.Split(':')[1])))
-			{
-				throw new Exception("Mihomo内核加载配置后异常退出，可能存在不支持的节点格式");
-			}
-			ShowMsg("切换测速配置文件成功！");
-			text2 = ConfigHandler.sendReq(JsonConvert.SerializeObject(new
-			{
-				port = 40000
-			}, Formatting.None), text3, "PATCH");
-			if (text2 != "204")
-			{
-				throw new Exception("切换http代理端口失败！" + text2);
-			}
-			ShowMsg("切换http代理端口成功！");
-			text2 = ConfigHandler.sendReq(JsonConvert.SerializeObject(new
-			{
-				mode = "Global"
-			}, Formatting.None), text3, "PATCH");
-			if (text2 != "204")
-			{
-				throw new Exception("切换全局代理失败！" + text2);
-			}
-			ShowMsg("切换全局代理成功！");
-		}
-		finally
-		{
-			try
-			{
-				if (File.Exists(path))
-				{
-					File.Delete(path);
-				}
-			}
-			catch
-			{
-			}
-		}
+        string path = Utils.GetPath("config\\temp.yaml");
+        Directory.CreateDirectory(Path.GetDirectoryName(path));
+        File.WriteAllText(path, NativeMihomoConfig.Build(config, lvSelecteds), Encoding.UTF8);
+        string endpoint = "http://127.0.0.1:" + config.externalControllerPort + "/configs";
+        string body = JsonConvert.SerializeObject(new { path = Path.GetFullPath(path) });
+        string result = ConfigHandler.sendReq(body, endpoint, "PUT");
+        if (result != "204") throw new Exception("加载测速配置失败: " + result);
+        ShowMsg("已直接生成 Mihomo 测速配置（含每节点独立代理端口）");
 	}
-
 	private void UpdateSpeedtestHandler(int index, string msg)
 	{
 		lvServers.Invoke((MethodInvoker)delegate
@@ -2104,7 +1820,7 @@ public class MainForm : Form
 		StringBuilder stringBuilder = new StringBuilder();
 		foreach (int lvSelected in lvSelecteds)
 		{
-			string shareUrl = ShareHandler.GetShareUrl(config, lvSelected);
+			string shareUrl = ExportNaming.ShareUrl(config, lvSelected);
 			if (!Utils.IsNullOrEmpty(shareUrl))
 			{
 				stringBuilder.Append(shareUrl);
@@ -2124,7 +1840,7 @@ public class MainForm : Form
 		StringBuilder stringBuilder = new StringBuilder();
 		foreach (int lvSelected in lvSelecteds)
 		{
-			string shareUrl = ShareHandler.GetShareUrl(config, lvSelected);
+			string shareUrl = ExportNaming.ShareUrl(config, lvSelected);
 			if (!Utils.IsNullOrEmpty(shareUrl))
 			{
 				stringBuilder.Append(shareUrl);
@@ -3683,7 +3399,7 @@ public class MainForm : Form
 		StringBuilder stringBuilder = new StringBuilder();
 		foreach (int lvSelected in lvSelecteds)
 		{
-			string shareUrl = ShareHandler.GetShareUrl(config, lvSelected);
+			string shareUrl = ExportNaming.ShareUrl(config, lvSelected);
 			if (!Utils.IsNullOrEmpty(shareUrl))
 			{
 				stringBuilder.Append(shareUrl);
@@ -3703,110 +3419,16 @@ public class MainForm : Form
 
 	private void menuExport2Clash_Click(object sender, EventArgs e)
 	{
-		GetLvSelectedIndex();
-		if (!ConfigHandler.TcpClientCheck("127.0.0.1", 25500))
-		{
-			MessageBox.Show($"无法连接到Subconverter(端口:{25500})，请确认是否启动！建议重新打开测速软件");
-			return;
-		}
-		StringBuilder stringBuilder = new StringBuilder();
-		List<VmessItem> listVlessReality = new List<VmessItem>();
-		List<VmessItem> listAnyTLS = new List<VmessItem>();
-		foreach (int lvSelected in lvSelecteds)
-		{
-			if (lvSelected >= 0 && lvSelected < config.vmess.Count)
-			{
-				VmessItem vmessItem = config.vmess[lvSelected];
-				// VLESS Reality 节点单独处理
-				bool isVlessReality = vmessItem.configType == 5 && 
-					(vmessItem.streamSecurity == "reality" || 
-					 !string.IsNullOrEmpty(vmessItem.publicKey) || 
-					 !string.IsNullOrEmpty(vmessItem.shortId));
-				if (isVlessReality)
-				{
-					listVlessReality.Add(vmessItem);
-					continue;
-				}
-				// AnyTLS 节点单独处理
-				if (vmessItem.configType == 12)
-				{
-					listAnyTLS.Add(vmessItem);
-					continue;
-				}
-			}
-			string shareUrl = ShareHandler.GetShareUrl(config, lvSelected);
-			if (!Utils.IsNullOrEmpty(shareUrl))
-			{
-				stringBuilder.Append(shareUrl);
-				stringBuilder.AppendLine();
-			}
-		}
-		if (stringBuilder.Length <= 0 && listVlessReality.Count == 0 && listAnyTLS.Count == 0)
-		{
-			return;
-		}
-		string text = Guid.NewGuid().ToString("N");
-		string path = Utils.GetPath("subconverter\\temp_" + text + ".txt");
-		try
-		{
-			string path2 = Utils.ShowSaveFileDialog("Mihomo配置文件（*.yaml）|*.yaml");
-			if (Utils.IsNullOrEmpty(path2))
-			{
-				return;
-			}
-			
-			string yamlContent = "";
-			if (stringBuilder.Length > 0)
-			{
-				stringBuilder.Insert(0, "ss://YWVzLTI1Ni1nY206ZmFCQW9ENTRrODdVSkc3QDEuMS4xLjE6NjY2#%e5%8d%a0%e4%bd%8d%e8%8a%82%e7%82%b9" + Environment.NewLine);
-				File.WriteAllText(path, Utils.Base64Encode(stringBuilder.ToString()), Encoding.UTF8);
-				HttpWebRequest obj = (HttpWebRequest)WebRequest.Create($"http://127.0.0.1:{25500}/sub?target=clash&url=temp_{text}.txt&insert=false");
-				obj.Method = "GET";
-				obj.Timeout = 10000;
-				obj.ReadWriteTimeout = 10000;
-				obj.ContinueTimeout = 10000;
-				using StreamReader streamReader = new StreamReader(obj.GetResponse().GetResponseStream(), Encoding.UTF8);
-				yamlContent = streamReader.ReadToEnd();
-			}
-			else
-			{
-				yamlContent = "mixed-port: 7890\r\nmode: Global\r\nlog-level: info\r\nexternal-controller: 127.0.0.1:9090\r\nproxies:\r\nproxy-groups:\r\n  - name: PROXY\r\n    type: select\r\n    proxies:\r\nrules:\r\n  - MATCH,PROXY\r\n";
-			}
-			
-			// 插入 VLESS Reality 节点
-			if (listVlessReality.Count > 0)
-			{
-				yamlContent = InsertVlessRealityToYaml(yamlContent, listVlessReality);
-			}
-			
-			// 插入 AnyTLS 节点
-			if (listAnyTLS.Count > 0)
-			{
-				yamlContent = InsertAnyTLSToYaml(yamlContent, listAnyTLS);
-			}
-			
-			File.WriteAllText(path2, yamlContent, Encoding.UTF8);
-			AppendText(notify: false, "保存文件成功");
-		}
-		catch (Exception ex)
-		{
-			MessageBox.Show("导出配置文件失败！返回异常：" + ex.Message);
-		}
-		finally
-		{
-			try
-			{
-				if (File.Exists(path))
-				{
-					File.Delete(path);
-				}
-			}
-			catch
-			{
-			}
-		}
+        GetLvSelectedIndex();
+        if (lvSelecteds.Count == 0) return;
+        string path = Utils.ShowSaveFileDialog("Mihomo配置文件（*.yaml）|*.yaml");
+        if (Utils.IsNullOrEmpty(path)) return;
+        try {
+            File.WriteAllText(path, NativeMihomoConfig.BuildExport(config, lvSelecteds), Encoding.UTF8);
+            AppendText(notify: false, "保存成功，节点名称已添加平均速度前缀");
+        }
+        catch (Exception ex) { MessageBox.Show("导出配置文件失败：" + ex.Message); }
 	}
-
 	private void menuStartClash_Click(object sender, EventArgs e)
 	{
 		GetLvSelectedIndex();
@@ -5006,7 +4628,7 @@ public class MainForm : Form
 		base.Margin = new System.Windows.Forms.Padding(5);
 		this.MinimumSize = new System.Drawing.Size(1760, 1330);
 		base.Name = "MainForm";
-		this.Text = "nodesCatchNext - V4.0.0";
+		this.Text = "nodesCatch Modern - V4.1.0";
 		base.FormClosing += new System.Windows.Forms.FormClosingEventHandler(MainForm_FormClosing);
 		base.Load += new System.EventHandler(MainForm_Load);
 		base.ResizeEnd += new System.EventHandler(MainForm_ResizeEnd);

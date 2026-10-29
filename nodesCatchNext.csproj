@@ -15,6 +15,7 @@
     <RootNamespace>nodesCatchNext</RootNamespace>
   </PropertyGroup>
   <ItemGroup>
+    <Compile Remove="tests/**/*.cs" />
     <None Remove="nodesCatchNext.Sample.SampleClientConfig.txt" />
     <None Remove="nodesCatchNext.Sample.SampleHttprequest.txt" />
     <EmbeddedResource Include="nodesCatchNext.Sample.SampleClientConfig.txt" LogicalName="nodesCatchNext.Sample.SampleClientConfig.txt" />

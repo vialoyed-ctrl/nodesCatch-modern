@@ -150,9 +150,9 @@ internal class DownloadHandle
 			return;
 		}
 		DateTime now = DateTime.Now;
-		if ((now - lastUpdate).Seconds == 1)
+		if ((now - lastUpdate).TotalSeconds >= 1.0)
 		{
-			long num = (bytes - lastBytes) / 1024;
+			long num = (long)((bytes - lastBytes) / 1024.0 / (now - lastUpdate).TotalSeconds);
 			if (num > MaxSpeed)
 			{
 				MaxSpeed = num;

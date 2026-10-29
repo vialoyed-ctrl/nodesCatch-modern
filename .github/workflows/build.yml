@@ -1,0 +1,41 @@
+name: Windows build and export regression
+on:
+  push:
+  pull_request:
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  build:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '8.0.x'
+      - name: Build application and tests
+        shell: pwsh
+        run: |
+          dotnet build nodesCatchNext.csproj -c Release
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          dotnet build tests/ExportRegression.csproj -c Release
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+      - name: Prepare core for configuration validation
+        shell: pwsh
+        run: |
+          Copy-Item release/nodeConfig.example.json bin/Release/net48/nodeConfig.example.json
+          ./scripts/install-runtime.ps1 -Destination ./bin/Release/net48
+      - name: Test export naming and generated Mihomo configuration
+        shell: pwsh
+        run: |
+          & ./tests/bin/Release/net48/ExportRegression.exe (Resolve-Path ./bin/Release/net48).Path
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+      - name: Package clean Windows download
+        shell: pwsh
+        run: ./scripts/package.ps1
+      - uses: actions/upload-artifact@v4
+        with:
+          name: nodesCatch-modern-windows-x64
+          path: |
+            dist/*.zip
+            dist/SHA256SUMS.txt
