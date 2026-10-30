@@ -12,6 +12,13 @@ import java.util.*;
 import java.util.concurrent.*;
 
 @RunWith(AndroidJUnit4.class) public class NativeCoreTest {
+    @Test public void windowsEncodedFilesImport() throws Exception {
+        String json="{\"proxies\":[{\"name\":\"Windows 导出\",\"type\":\"anytls\",\"server\":\"example.com\",\"port\":443,\"password\":\"probe\"}]}";
+        for(java.nio.charset.Charset charset:new java.nio.charset.Charset[]{StandardCharsets.UTF_8,StandardCharsets.UTF_16LE,StandardCharsets.UTF_16BE}){
+            ByteArrayOutputStream bytes=new ByteArrayOutputStream();if(charset==StandardCharsets.UTF_8)bytes.write(new byte[]{(byte)239,(byte)187,(byte)191});else if(charset==StandardCharsets.UTF_16LE)bytes.write(new byte[]{(byte)255,(byte)254});else bytes.write(new byte[]{(byte)254,(byte)255});bytes.write(json.getBytes(charset));
+            String decoded=CoreEngine.readLimited(new ByteArrayInputStream(bytes.toByteArray()),1024*1024);assertEquals("Windows 导出",Nodes.parse(decoded).get(0).name());
+        }
+    }
     private static String unicodeYaml(){StringBuilder s=new StringBuilder("#");for(int i=0;i<1023;i++)s.append('x');return s+"🇺🇸\nproxies:\n - {name: 'Import 🇯🇵', type: anytls, server: example.com, port: 443, password: probe}\n";}
     @Test public void fileImportCallbackLoadsUnicodeYaml() throws Exception {
         android.app.Instrumentation instrumentation=InstrumentationRegistry.getInstrumentation();android.content.Context context=instrumentation.getTargetContext();

@@ -42,4 +42,9 @@ public class NodesTest {
         for(int i=0;i<70;i++)big.append("  - {name: '节点 🇺🇸 ").append(i).append("', type: anytls, server: example.com, port: 443, password: test}\n");
         assertEquals(70,Nodes.parse(big.toString()).size());
     }
+    @Test public void windowsBomConfigurationAndEncodedSubscription() throws Exception {
+        String json="\uFEFF{\"proxies\":[{\"name\":\"Windows 导出\",\"type\":\"anytls\",\"server\":\"example.com\",\"port\":443,\"password\":\"test\"}]}";
+        assertEquals("Windows 导出",Nodes.parse(json).get(0).name());
+        assertEquals(1,Nodes.parse("\uFEFF"+Base64.getEncoder().encodeToString(json.getBytes(StandardCharsets.UTF_8))).size());
+    }
 }

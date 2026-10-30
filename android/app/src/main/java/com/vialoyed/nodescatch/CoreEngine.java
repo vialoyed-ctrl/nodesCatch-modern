@@ -72,7 +72,14 @@ public final class CoreEngine {
         if(bytes>0){n.average=bytes*1000.0/Math.max(1,end-start);n.peak=peak;n.status=cancelled?"已停止（部分结果）":"下载完成 · "+String.format(Locale.US,"%.1fMB",bytes/1048576.0);}
         else n.status=cancelled?"已停止":"无下载数据";
     }
-    public static String readLimited(InputStream in,int limit) throws IOException {ByteArrayOutputStream out=new ByteArrayOutputStream();byte[] buffer=new byte[8192];int count;while((count=in.read(buffer))!=-1){if(out.size()+count>limit)throw new IOException("文件过大，最多支持 5MB");out.write(buffer,0,count);}return out.toString("UTF-8");}
+    public static String readLimited(InputStream in,int limit) throws IOException {
+        ByteArrayOutputStream out=new ByteArrayOutputStream();byte[] buffer=new byte[8192];int count;
+        while((count=in.read(buffer))!=-1){if(out.size()+count>limit)throw new IOException("文件过大，最多支持 5MB");out.write(buffer,0,count);}
+        byte[] bytes=out.toByteArray();
+        if(bytes.length>=2&&(bytes[0]&255)==255&&(bytes[1]&255)==254)return new String(bytes,2,bytes.length-2,StandardCharsets.UTF_16LE);
+        if(bytes.length>=2&&(bytes[0]&255)==254&&(bytes[1]&255)==255)return new String(bytes,2,bytes.length-2,StandardCharsets.UTF_16BE);
+        return new String(bytes,StandardCharsets.UTF_8);
+    }
     public static String subscription(String url) throws Exception {
         URI uri=new URI(url);if(!"https".equals(uri.getScheme())&&!"http".equals(uri.getScheme()))throw new IllegalArgumentException("订阅地址必须为 HTTP 或 HTTPS");
         HttpURLConnection c=(HttpURLConnection)new URL(url).openConnection(Proxy.NO_PROXY);c.setConnectTimeout(15000);c.setReadTimeout(15000);c.setRequestProperty("User-Agent","clash.meta NodesCatchAndroid/0.1");

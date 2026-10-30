@@ -34,9 +34,9 @@ public final class Nodes {
         return speed(n.average)+" "+n.name().replaceFirst("^\\d+(?:[.,]\\d+)?\\s*(?:GB/s|MB/s|KB/s|B/s)\\s+","");
     }
     public static List<Node> parse(String input) throws Exception {
-        String text=input.trim(); if(text.isEmpty()) throw new IllegalArgumentException("内容为空");
+        String text=cleanText(input); if(text.isEmpty()) throw new IllegalArgumentException("内容为空");
         if(!text.contains("://") && !text.contains("proxies:" ) && !text.startsWith("{")) {
-            try {text=decode(text).trim();} catch(Exception ignored) {}
+            try {text=cleanText(decode(text));} catch(Exception ignored) {}
         }
         List<Node> result=new ArrayList<>();
         if(text.startsWith("{") || text.contains("proxies:")) {
@@ -57,6 +57,7 @@ public final class Nodes {
         if(result.size()>2000) throw new IllegalArgumentException("单次最多导入 2000 个节点");
         return result;
     }
+    private static String cleanText(String input){String text=input.trim();return text.startsWith("\uFEFF")?text.substring(1).trim():text;}
     private static void add(List<Node> list,JSONObject p) throws Exception {
         if(!p.has("type")||!p.has("server")||p.optInt("port")<1||p.optInt("port")>65535) throw new IllegalArgumentException("节点缺少类型、服务器或有效端口");
         if(p.optString("name").trim().isEmpty()) p.put("name",p.optString("type")+" "+p.optString("server"));
