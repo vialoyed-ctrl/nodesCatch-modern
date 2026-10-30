@@ -16,7 +16,7 @@ import android.widget.TextView;
    try{
     ins.runOnMainSync(()->{try{
      java.lang.reflect.Field f=MainActivity.class.getDeclaredField("nodes");f.setAccessible(true);List<Nodes.Node> list=(List<Nodes.Node>)f.get(activity);list.clear();
-     for(int i=0;i<12;i++){Nodes.Node n=Nodes.parse("http://example.com:80#"+new String[]{"日本 · Tokyo 01","新加坡 · Singapore 02","美国 · Los Angeles 03"}[i%3]).get(0);n.selected=i<2;n.delay=83+i*17;n.average=5.4*1048576;n.peak=8.2*1048576;n.delayState=TestState.SUCCESS;n.speedState=i%3==0?TestState.SUCCESS:i%3==1?TestState.RUNNING:TestState.FAILED;n.status=i%3==0?"下载完成":i%3==1?"正在下载…":"HTTP 403";list.add(n);}
+     for(int i=0;i<12;i++){Nodes.Node n=Nodes.parse("http://example.com:80#Example").get(0);n.proxy.put("name",new String[]{"日本 · Tokyo 01","新加坡 · Singapore 02","美国 · Los Angeles 03"}[i%3]);n.selected=i<2;n.delay=83+i*17;n.average=5.4*1048576;n.peak=8.2*1048576;n.delayState=TestState.SUCCESS;n.speedState=i%3==0?TestState.SUCCESS:i%3==1?TestState.RUNNING:TestState.FAILED;n.status=i%3==0?"下载完成":i%3==1?"正在下载…":"HTTP 403";list.add(n);}
      java.lang.reflect.Method refresh=MainActivity.class.getDeclaredMethod("refresh");refresh.setAccessible(true);refresh.invoke(activity);
     }catch(Exception e){throw new RuntimeException(e);}});
     ins.waitForIdleSync();
