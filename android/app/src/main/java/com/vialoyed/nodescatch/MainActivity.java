@@ -24,21 +24,25 @@ public final class MainActivity extends Activity {
     private Adapter adapter;
     private TextView summary,message;
     private EditText search;
+    private Button delaySort,speedSort;
+    private String sortMetric="";
+    private boolean sortAscending=true;
     private boolean busy=false,onlySuccess=false;
     private String pendingExport;
     private LinearLayout root;
     private final int NAVY=Color.rgb(16,43,56),TEAL=Color.rgb(8,127,140),MUTED=Color.rgb(98,116,126);
     @Override public void onCreate(Bundle state){
-        super.onCreate(state);prefs=getSharedPreferences("settings",MODE_PRIVATE);engine=new CoreEngine(this);load();
+        super.onCreate(state);prefs=getSharedPreferences("settings",MODE_PRIVATE);engine=new CoreEngine(this);sortMetric=prefs.getString("sortMetric","");sortAscending=prefs.getBoolean("sortAscending",true);load();
         root=new LinearLayout(this);root.setOrientation(LinearLayout.VERTICAL);root.setBackgroundColor(Color.rgb(244,247,249));setContentView(root);
         root.setOnApplyWindowInsetsListener((view,insets)->{view.setPadding(0,insets.getSystemWindowInsetTop(),0,insets.getSystemWindowInsetBottom());return insets;});
         LinearLayout head=new LinearLayout(this);head.setPadding(dp(18),dp(18),dp(12),dp(16));head.setGravity(Gravity.CENTER_VERTICAL);head.setBackgroundColor(NAVY);
         LinearLayout title=new LinearLayout(this);title.setOrientation(1);TextView brand=label("节点测速",25,Color.WHITE);brand.setTypeface(null,Typeface.BOLD);title.addView(brand);title.addView(label("NODES CATCH · ANDROID",11,Color.rgb(95,222,200)));head.addView(title,new LinearLayout.LayoutParams(0,-2,1));head.addView(button("＋ 导入",this::importMenu));head.addView(button("设置",this::settings));root.addView(head);
-        LinearLayout stats=new LinearLayout(this);stats.setGravity(Gravity.CENTER_VERTICAL);stats.setPadding(dp(18),dp(10),dp(12),0);summary=label("",13,MUTED);stats.addView(summary,new LinearLayout.LayoutParams(0,-2,1));stats.addView(button("更多",this::more));root.addView(stats);
+        LinearLayout stats=new LinearLayout(this);stats.setGravity(Gravity.CENTER_VERTICAL);stats.setPadding(dp(18),dp(10),dp(12),0);summary=label("",10,MUTED);stats.addView(summary,new LinearLayout.LayoutParams(0,-2,1));stats.addView(button("全选",()->selectionAction(0)));stats.addView(button("反选",()->selectionAction(1)));stats.addView(button("范围",()->selectionAction(2)));stats.addView(button("取消",()->selectionAction(3)));stats.addView(button("更多",this::more));root.addView(stats);
         search=new EditText(this);search.setSingleLine();search.setTextSize(14);search.setHint("搜索节点名称 / 协议 / 服务器");search.setPadding(dp(12),0,dp(12),0);search.setBackground(shape(Color.WHITE,10));LinearLayout.LayoutParams searchLP=new LinearLayout.LayoutParams(-1,dp(44));searchLP.setMargins(dp(16),dp(10),dp(16),dp(8));root.addView(search,searchLP);search.addTextChangedListener(new TextWatcher(){public void beforeTextChanged(CharSequence s,int a,int c,int f){}public void onTextChanged(CharSequence s,int a,int b,int c){refresh();}public void afterTextChanged(Editable s){}});
+        LinearLayout sorts=new LinearLayout(this);sorts.setPadding(dp(16),0,dp(16),dp(6));sorts.setGravity(Gravity.CENTER_VERTICAL);sorts.addView(label("排序  ",10,MUTED));delaySort=button("延迟 ↑",()->sortBy("delay"));speedSort=button("均速 ↓",()->sortBy("speed"));sorts.addView(delaySort,new LinearLayout.LayoutParams(0,dp(34),1));sorts.addView(speedSort,new LinearLayout.LayoutParams(0,dp(34),1));root.addView(sorts);
         ListView list=new ListView(this);list.setDivider(null);list.setDividerHeight(0);adapter=new Adapter();list.setAdapter(adapter);FrameLayout space=new FrameLayout(this);space.addView(list,new FrameLayout.LayoutParams(-1,-1));TextView empty=label("还没有节点\n点击右上角 ＋ 导入，添加自己的节点或订阅",14,MUTED);empty.setGravity(Gravity.CENTER);empty.setPadding(dp(24),dp(24),dp(24),dp(24));space.addView(empty,new FrameLayout.LayoutParams(-1,-1));list.setEmptyView(empty);root.addView(space,new LinearLayout.LayoutParams(-1,0,1));
         message=label("导入节点后，先测延迟，再按需测下载。",12,MUTED);message.setPadding(dp(18),dp(8),dp(18),dp(8));root.addView(message);
-        LinearLayout actions=new LinearLayout(this);actions.setPadding(dp(8),0,dp(8),dp(10));for(String text:new String[]{"测延迟","测下载","停止","导出"}){Button b=button(text,()->{if(text.equals("停止")){engine.cancel();message.setText("正在停止…");}else if(text.equals("导出"))exportMenu();else test(text.equals("测下载"));});actions.addView(b,new LinearLayout.LayoutParams(0,dp(52),1));}root.addView(actions);refresh();
+        LinearLayout actions=new LinearLayout(this);actions.setPadding(dp(8),0,dp(8),dp(10));for(String text:new String[]{"测延迟","测下载","停止","删除","导出"}){Button b=button(text,()->{if(text.equals("停止")){engine.cancel();message.setText("正在停止…");}else if(text.equals("导出"))exportMenu();else if(text.equals("删除"))deleteNodes(selected());else test(text.equals("测下载"));});actions.addView(b,new LinearLayout.LayoutParams(0,dp(52),1));}root.addView(actions);refresh();
     }
     private int dp(int n){return (int)(n*getResources().getDisplayMetrics().density+.5f);}
     private TextView label(String text,int size,int color){TextView t=new TextView(this);t.setText(text);t.setTextSize(size);t.setTextColor(color);return t;}
@@ -50,7 +54,24 @@ public final class MainActivity extends Activity {
     private void load(){try{File file=new File(getFilesDir(),"nodes.json");if(file.exists())try(InputStream in=new FileInputStream(file)){JSONArray a=new JSONArray(CoreEngine.readLimited(in,5*1024*1024));for(int i=0;i<a.length();i++)nodes.add(Nodes.Node.load(a.getJSONObject(i)));}}catch(Exception e){toast("本地记录读取失败，原文件已保留");}}
     private void save(){try{JSONArray a=new JSONArray();for(Nodes.Node n:nodes)a.put(n.save());android.util.AtomicFile file=new android.util.AtomicFile(new File(getFilesDir(),"nodes.json"));FileOutputStream out=file.startWrite();try{out.write(a.toString().getBytes(StandardCharsets.UTF_8));file.finishWrite(out);}catch(Exception e){file.failWrite(out);throw e;}}catch(Exception e){toast("保存失败："+e.getMessage());}}
     private List<Nodes.Node> selected(){List<Nodes.Node> out=new ArrayList<>();for(Nodes.Node n:nodes)if(n.selected)out.add(n);return out;}
-    private void refresh(){if(adapter==null)return;String filter=search==null?"":search.getText().toString().toLowerCase(Locale.ROOT);visible.clear();for(Nodes.Node n:nodes){String hay=n.name()+" "+n.type()+" "+n.proxy.optString("server");if(hay.toLowerCase(Locale.ROOT).contains(filter)&&(!onlySuccess||n.average>=0))visible.add(n);}summary.setText(nodes.size()+" 个节点 · 已选 "+selected().size()+" · 显示 "+visible.size());adapter.notifyDataSetChanged();}
+    private void refresh(){if(adapter==null)return;if(!sortMetric.isEmpty())NodeActions.sort(nodes,sortMetric,sortAscending);String filter=search==null?"":search.getText().toString().toLowerCase(Locale.ROOT);visible.clear();for(Nodes.Node n:nodes){String hay=n.name()+" "+n.type()+" "+n.proxy.optString("server");if(hay.toLowerCase(Locale.ROOT).contains(filter)&&(!onlySuccess||n.average>=0))visible.add(n);}updateSummary();if(delaySort!=null){delaySort.setText("延迟 "+(sortMetric.equals("delay")&&!sortAscending?"↓":"↑"));speedSort.setText("均速 "+(sortMetric.equals("speed")&&sortAscending?"↑":"↓"));delaySort.setTextColor(sortMetric.equals("delay")?Color.WHITE:TEAL);speedSort.setTextColor(sortMetric.equals("speed")?Color.WHITE:TEAL);delaySort.setBackground(shape(sortMetric.equals("delay")?TEAL:Color.rgb(225,244,242),6));speedSort.setBackground(shape(sortMetric.equals("speed")?TEAL:Color.rgb(225,244,242),6));}adapter.notifyDataSetChanged();}
+    private void updateSummary(){summary.setText("已选 "+selected().size()+"/"+nodes.size()+(visible.size()!=nodes.size()?" · 当前 "+visible.size():""));}
+    private void selectionAction(int action){
+        if(!idle())return;
+        try{
+            if(action==0){for(Nodes.Node n:visible)n.selected=true;}
+            else if(action==1)NodeActions.invert(visible);
+            else if(action==2){int count=NodeActions.selectRange(visible);message.setText("已选中范围内 "+count+" 个节点");}
+            else {for(Nodes.Node n:nodes)n.selected=false;}
+            save();refresh();
+        }catch(IllegalArgumentException e){toast(e.getMessage());}
+    }
+    private void sortBy(String metric){
+        if(!idle())return;
+        sortAscending=sortMetric.equals(metric)?!sortAscending:metric.equals("delay");sortMetric=metric;
+        prefs.edit().putString("sortMetric",sortMetric).putBoolean("sortAscending",sortAscending).apply();
+        save();refresh();message.setText((metric.equals("delay")?"按延迟":"按平均速度")+(sortAscending?"升序":"降序")+"，失败 / 未测节点置后");
+    }
     private void importMenu(){if(!idle())return;new AlertDialog.Builder(this).setTitle("导入节点").setItems(new String[]{"粘贴分享链接 / Base64 / YAML","从文件导入","添加或更新订阅"},(d,index)->{if(index==0){EditText input=new EditText(this);input.setMinLines(5);input.setHint("粘贴节点或完整配置");input.setGravity(Gravity.TOP);new AlertDialog.Builder(this).setTitle("粘贴导入").setView(input).setPositiveButton("导入",(dialog,which)->parseInput(input.getText().toString(),"")).setNegativeButton("取消",null).show();}else if(index==1){Intent intent=new Intent(Intent.ACTION_OPEN_DOCUMENT);intent.setType("*/*");intent.addCategory(Intent.CATEGORY_OPENABLE);startActivityForResult(intent,101);}else subscriptionDialog();}).show();}
     private void parseInput(String text,String source){if(!idle())return;busy=true;message.setText("正在解析…");worker.execute(()->{try{List<Nodes.Node> imported=Nodes.parse(text);for(Nodes.Node n:imported)n.source=source;runOnUiThread(()->{if(!source.isEmpty())nodes.removeIf(n->n.source.equals(source));nodes.addAll(imported);busy=false;save();refresh();message.setText("已导入 "+imported.size()+" 个节点");});}catch(Exception e){runOnUiThread(()->{busy=false;error(e);message.setText("导入失败，已有节点未改动");});}});}
     private void subscriptionDialog(){EditText url=new EditText(this);url.setSingleLine();url.setHint("https://…");url.setInputType(android.text.InputType.TYPE_CLASS_TEXT|android.text.InputType.TYPE_TEXT_VARIATION_URI);new AlertDialog.Builder(this).setTitle("订阅地址（仅保存在本机）").setView(url).setPositiveButton("获取",(d,w)->fetchSubscription(url.getText().toString().trim())).setNegativeButton("取消",null).show();}
@@ -63,15 +84,15 @@ public final class MainActivity extends Activity {
             switch(w){
                 case 0: for(Nodes.Node n:visible){n.selected=true;} break;
                 case 1: for(Nodes.Node n:nodes){n.selected=false;} break;
-                case 2: nodes.sort((a,b)->Double.compare(b.average,a.average)); break;
-                case 3: nodes.sort(Comparator.comparingLong(n->n.delay<0?Long.MAX_VALUE:n.delay)); break;
-                case 4: nodes.sort(Comparator.comparing(Nodes.Node::name)); break;
+                case 2: sortMetric="speed";sortAscending=false; break;
+                case 3: sortMetric="delay";sortAscending=true; break;
+                case 4: sortMetric="";nodes.sort(Comparator.comparing(Nodes.Node::name)); break;
                 case 5: onlySuccess=!onlySuccess; break;
                 case 6: subscriptions();return;
                 case 7: deleteNodes(selected());return;
                 default:return;
             }
-            save();refresh();
+            prefs.edit().putString("sortMetric",sortMetric).putBoolean("sortAscending",sortAscending).apply();save();refresh();
         }).show();
     }
     private void deleteNodes(List<Nodes.Node> chosen){
@@ -94,21 +115,22 @@ public final class MainActivity extends Activity {
         public View getView(int i,View old,android.view.ViewGroup parent){
             Nodes.Node n=visible.get(i);
             LinearLayout outer=new LinearLayout(MainActivity.this);outer.setPadding(dp(10),dp(2),dp(10),dp(2));
-            LinearLayout card=new LinearLayout(MainActivity.this);card.setOrientation(1);card.setPadding(dp(6),dp(3),dp(6),dp(5));card.setBackground(shape(Color.WHITE,6));
+            LinearLayout card=new LinearLayout(MainActivity.this);card.setOrientation(1);card.setPadding(dp(6),dp(3),dp(6),dp(5));card.setBackground(shape(n.selected?Color.rgb(220,230,255):Color.WHITE,6));
             outer.addView(card,new LinearLayout.LayoutParams(-1,-2));
             LinearLayout row=new LinearLayout(MainActivity.this);row.setGravity(Gravity.CENTER_VERTICAL);
             CheckBox check=new CheckBox(MainActivity.this);check.setMinHeight(0);check.setMinimumHeight(0);check.setPadding(0,0,0,0);check.setChecked(n.selected);check.setEnabled(!busy);
-            check.setOnCheckedChangeListener((b,v)->{n.selected=v;summary.setText(nodes.size()+" 个节点 · 已选 "+selected().size()+" · 显示 "+visible.size());});
-            row.addView(check,new LinearLayout.LayoutParams(dp(30),dp(30)));
+            check.setOnCheckedChangeListener((b,v)->{n.selected=v;updateSummary();card.setBackground(shape(v?Color.rgb(220,230,255):Color.WHITE,6));});
+
             TextView name=label(n.name(),11,NAVY);name.setTypeface(null,Typeface.BOLD);name.setSingleLine();name.setEllipsize(android.text.TextUtils.TruncateAt.END);
-            row.addView(name,new LinearLayout.LayoutParams(0,dp(30),1));name.setGravity(Gravity.CENTER_VERTICAL);
+            row.addView(name,new LinearLayout.LayoutParams(0,dp(30),1));name.setGravity(Gravity.CENTER_VERTICAL);row.addView(check,new LinearLayout.LayoutParams(dp(30),dp(30)));
             TextView remove=label("×",20,MUTED);remove.setGravity(Gravity.CENTER);remove.setContentDescription("删除此节点");remove.setOnClickListener(v->deleteNodes(Collections.singletonList(n)));
             row.addView(remove,new LinearLayout.LayoutParams(dp(32),dp(30)));card.addView(row);
             TextView metrics=label(n.type()+"  延迟 "+(n.delay<0?"—":n.delay+"ms")+"  均速 "+Nodes.speed(n.average)+"  峰值 "+Nodes.speed(n.peak),9,TEAL);
-            metrics.setSingleLine();metrics.setEllipsize(android.text.TextUtils.TruncateAt.END);metrics.setPadding(dp(30),0,0,0);card.addView(metrics);
+            metrics.setSingleLine();metrics.setEllipsize(android.text.TextUtils.TruncateAt.END);metrics.setPadding(dp(4),0,0,0);card.addView(metrics);
             TextView detail=label(n.status+" · "+n.proxy.optString("server")+":"+n.proxy.optInt("port"),8,MUTED);
-            detail.setSingleLine();detail.setEllipsize(android.text.TextUtils.TruncateAt.END);detail.setPadding(dp(30),dp(2),0,0);card.addView(detail);
-            card.setOnLongClickListener(v->{deleteNodes(Collections.singletonList(n));return true;});
+            detail.setSingleLine();detail.setEllipsize(android.text.TextUtils.TruncateAt.END);detail.setPadding(dp(4),dp(2),0,0);card.addView(detail);
+            card.setOnClickListener(v->{if(idle()){n.selected=!n.selected;save();refresh();}});
+            card.setOnLongClickListener(v->{if(idle()){n.selected=!n.selected;save();refresh();}return true;});
             return outer;
         }
     }

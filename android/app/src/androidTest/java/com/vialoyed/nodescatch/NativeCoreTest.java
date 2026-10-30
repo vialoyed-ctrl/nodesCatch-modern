@@ -7,6 +7,7 @@ import static org.junit.Assert.*;
 import static androidx.test.espresso.Espresso.onView;
 import static androidx.test.espresso.matcher.ViewMatchers.withText;
 import static androidx.test.espresso.action.ViewActions.click;
+import static androidx.test.espresso.matcher.ViewMatchers.withId;
 import org.json.*;
 import java.io.*;
 import java.net.*;
@@ -15,6 +16,22 @@ import java.util.*;
 import java.util.concurrent.*;
 
 @RunWith(AndroidJUnit4.class) public class NativeCoreTest {
+    @Test public void rangeSelectionAndBottomBatchDelete() throws Exception {
+        android.app.Instrumentation instrumentation=InstrumentationRegistry.getInstrumentation();
+        MainActivity activity=(MainActivity)instrumentation.startActivitySync(new android.content.Intent(instrumentation.getTargetContext(),MainActivity.class).addFlags(android.content.Intent.FLAG_ACTIVITY_NEW_TASK));
+        java.lang.reflect.Field field=MainActivity.class.getDeclaredField("nodes");field.setAccessible(true);
+        try{
+            instrumentation.runOnMainSync(()->{try{
+                List<Nodes.Node> list=(List<Nodes.Node>)field.get(activity);list.clear();
+                for(int i=0;i<19;i++){Nodes.Node node=Nodes.parse("anytls://probe@example.com:443#Range"+i).get(0);node.selected=i==1||i==10;list.add(node);}
+                java.lang.reflect.Method refresh=MainActivity.class.getDeclaredMethod("refresh");refresh.setAccessible(true);refresh.invoke(activity);
+            }catch(Exception e){throw new RuntimeException(e);}});
+            onView(withText("范围")).perform(click());
+            instrumentation.runOnMainSync(()->{try{int count=0;for(Nodes.Node n:(List<Nodes.Node>)field.get(activity))if(n.selected)count++;assertEquals(10,count);}catch(Exception e){throw new RuntimeException(e);}});
+            onView(withText("删除")).perform(click());onView(withId(android.R.id.button1)).perform(click());
+            instrumentation.runOnMainSync(()->{try{List<Nodes.Node> list=(List<Nodes.Node>)field.get(activity);assertEquals(9,list.size());for(Nodes.Node n:list)assertFalse(n.selected);}catch(Exception e){throw new RuntimeException(e);}});
+        }finally{instrumentation.runOnMainSync(activity::finish);}
+    }
     @Test public void selectedNodeCanBeDeletedFromMenu() throws Exception {
         android.app.Instrumentation instrumentation=InstrumentationRegistry.getInstrumentation();
         MainActivity activity=(MainActivity)instrumentation.startActivitySync(new android.content.Intent(instrumentation.getTargetContext(),MainActivity.class).addFlags(android.content.Intent.FLAG_ACTIVITY_NEW_TASK));
