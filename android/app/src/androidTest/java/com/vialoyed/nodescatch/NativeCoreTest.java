@@ -55,10 +55,12 @@ import java.util.concurrent.*;
         File fixture=new File(context.getFilesDir(),"unicode-import-test.yaml");try(FileOutputStream out=new FileOutputStream(fixture)){out.write(unicodeYaml().getBytes(StandardCharsets.UTF_8));}
         MainActivity activity=(MainActivity)instrumentation.startActivitySync(new android.content.Intent(context,MainActivity.class).addFlags(android.content.Intent.FLAG_ACTIVITY_NEW_TASK));
         try {
+            java.lang.reflect.Field initial=MainActivity.class.getDeclaredField("nodes");initial.setAccessible(true);java.util.concurrent.atomic.AtomicInteger before=new java.util.concurrent.atomic.AtomicInteger();
+            instrumentation.runOnMainSync(()->{try{before.set(((List<?>)initial.get(activity)).size());}catch(Exception e){throw new RuntimeException(e);}});
             instrumentation.runOnMainSync(()->activity.onActivityResult(101,android.app.Activity.RESULT_OK,new android.content.Intent().setData(android.net.Uri.fromFile(fixture))));
             java.lang.reflect.Field field=MainActivity.class.getDeclaredField("nodes");field.setAccessible(true);long end=System.currentTimeMillis()+5000;int count=0;
-            while(System.currentTimeMillis()<end){instrumentation.waitForIdleSync();java.util.concurrent.atomic.AtomicInteger current=new java.util.concurrent.atomic.AtomicInteger();instrumentation.runOnMainSync(()->{try{current.set(((List<?>)field.get(activity)).size());}catch(Exception e){throw new RuntimeException(e);}});count=current.get();if(count>0)break;Thread.sleep(50);}
-            assertTrue("File result was not imported into activity",count>0);
+            while(System.currentTimeMillis()<end){instrumentation.waitForIdleSync();java.util.concurrent.atomic.AtomicInteger current=new java.util.concurrent.atomic.AtomicInteger();instrumentation.runOnMainSync(()->{try{current.set(((List<?>)field.get(activity)).size());}catch(Exception e){throw new RuntimeException(e);}});count=current.get();if(count>before.get())break;Thread.sleep(50);}
+            assertEquals("File result was not imported into activity",before.get()+1,count);
         }finally{instrumentation.runOnMainSync(activity::finish);fixture.delete();}
     }
     @Test public void subscriptionFetchAndUnicodeYamlImport() throws Exception {
