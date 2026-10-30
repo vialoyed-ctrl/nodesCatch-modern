@@ -1,0 +1,43 @@
+name: Publish verified Android build
+on:
+  workflow_dispatch:
+    inputs:
+      run_id:
+        required: true
+        description: Successful Android build run ID
+      tag:
+        required: true
+        description: Existing draft release tag
+permissions:
+  actions: read
+  contents: write
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Verify source run passed
+        env:
+          GH_TOKEN: ${{ github.token }}
+          REPO: ${{ github.repository }}
+          RUN_ID: ${{ inputs.run_id }}
+        run: |
+          test "$(gh api "repos/$REPO/actions/runs/$RUN_ID" --jq .conclusion)" = success
+      - uses: actions/download-artifact@v4
+        with:
+          name: nodesCatch-android-v0.1.0
+          run-id: ${{ inputs.run_id }}
+          github-token: ${{ github.token }}
+          path: package
+      - name: Attach signed APK to the existing draft
+        env:
+          GH_TOKEN: ${{ github.token }}
+          REPO: ${{ github.repository }}
+          TAG: ${{ inputs.tag }}
+        run: |
+          test "$(gh release view "$TAG" --repo "$REPO" --json isDraft --jq .isDraft)" = true
+          APK="$(find package -name app-release.apk -print -quit)"
+          test -n "$APK"
+          VERSION="${TAG#android-v}"
+          cp "$APK" "nodesCatch-android-v$VERSION.apk"
+          sha256sum "nodesCatch-android-v$VERSION.apk" > SHA256SUMS.txt
+          gh release upload "$TAG" "nodesCatch-android-v$VERSION.apk" SHA256SUMS.txt --repo "$REPO" --clobber
