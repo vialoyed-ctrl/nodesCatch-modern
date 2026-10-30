@@ -33,4 +33,13 @@ public class NodesTest {
         Nodes.Node n=Nodes.parse("http://user:pass%3Aword@example.com:8080#").get(0);assertFalse(n.name().isEmpty());
         String exported=Nodes.links(Collections.singletonList(n),false);assertTrue(exported.contains("user:pass%3Aword@"));Nodes.Node round=Nodes.parse(exported).get(0);assertEquals("pass:word",round.proxy.getString("password"));
     }
+    @Test public void emojiAtReaderBoundaryDoesNotRejectLargeYaml() throws Exception {
+        // SnakeYAML 2.3 filled a 1025-char buffer, then tried to read a low
+        // surrogate past its end when a flag/emoji crossed that boundary.
+        String text="#"+"x".repeat(1023)+"🇺🇸\nproxies:\n  - name: '日本 🇯🇵'\n    type: anytls\n    server: example.com\n    port: 443\n    password: test\n";
+        assertEquals(1,Nodes.parse(text).size());
+        StringBuilder big=new StringBuilder("proxies:\n");
+        for(int i=0;i<70;i++)big.append("  - {name: '节点 🇺🇸 ").append(i).append("', type: anytls, server: example.com, port: 443, password: test}\n");
+        assertEquals(70,Nodes.parse(big.toString()).size());
+    }
 }

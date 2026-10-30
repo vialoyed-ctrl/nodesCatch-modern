@@ -12,6 +12,23 @@ import java.util.*;
 import java.util.concurrent.*;
 
 @RunWith(AndroidJUnit4.class) public class NativeCoreTest {
+    private static String unicodeYaml(){StringBuilder s=new StringBuilder("#");for(int i=0;i<1023;i++)s.append('x');return s+"🇺🇸\nproxies:\n - {name: 'Import 🇯🇵', type: anytls, server: example.com, port: 443, password: probe}\n";}
+    @Test public void fileImportCallbackLoadsUnicodeYaml() throws Exception {
+        android.app.Instrumentation instrumentation=InstrumentationRegistry.getInstrumentation();android.content.Context context=instrumentation.getTargetContext();
+        File fixture=new File(context.getFilesDir(),"unicode-import-test.yaml");try(FileOutputStream out=new FileOutputStream(fixture)){out.write(unicodeYaml().getBytes(StandardCharsets.UTF_8));}
+        MainActivity activity=(MainActivity)instrumentation.startActivitySync(new android.content.Intent(context,MainActivity.class).addFlags(android.content.Intent.FLAG_ACTIVITY_NEW_TASK));
+        try {
+            instrumentation.runOnMainSync(()->activity.onActivityResult(101,android.app.Activity.RESULT_OK,new android.content.Intent().setData(android.net.Uri.fromFile(fixture))));
+            java.lang.reflect.Field field=MainActivity.class.getDeclaredField("nodes");field.setAccessible(true);long end=System.currentTimeMillis()+5000;int count=0;
+            while(System.currentTimeMillis()<end){instrumentation.waitForIdleSync();java.util.concurrent.atomic.AtomicInteger current=new java.util.concurrent.atomic.AtomicInteger();instrumentation.runOnMainSync(()->{try{current.set(((List<?>)field.get(activity)).size());}catch(Exception e){throw new RuntimeException(e);}});count=current.get();if(count>0)break;Thread.sleep(50);}
+            assertTrue("File result was not imported into activity",count>0);
+        }finally{instrumentation.runOnMainSync(activity::finish);fixture.delete();}
+    }
+    @Test public void subscriptionFetchAndUnicodeYamlImport() throws Exception {
+        ServerSocket server=new ServerSocket(0,1,InetAddress.getByName("127.0.0.1"));ExecutorService executor=Executors.newSingleThreadExecutor();byte[] payload=unicodeYaml().getBytes(StandardCharsets.UTF_8);
+        executor.execute(()->{try(Socket socket=server.accept()){InputStream in=socket.getInputStream();while(!line(in).isEmpty()){}OutputStream out=socket.getOutputStream();out.write(("HTTP/1.1 200 OK\r\nContent-Type: text/plain; charset=utf-8\r\nContent-Length: "+payload.length+"\r\nConnection: close\r\n\r\n").getBytes(StandardCharsets.US_ASCII));out.write(payload);}catch(Exception ignored){}});
+        try{String result=CoreEngine.subscription("http://127.0.0.1:"+server.getLocalPort()+"/subscription");assertEquals(1,Nodes.parse(result).size());}finally{server.close();executor.shutdownNow();}
+    }
     @Test public void activityLaunches() throws Exception {
         android.app.Instrumentation instrumentation=InstrumentationRegistry.getInstrumentation();
         android.content.Intent intent=new android.content.Intent(instrumentation.getTargetContext(),MainActivity.class).addFlags(android.content.Intent.FLAG_ACTIVITY_NEW_TASK);

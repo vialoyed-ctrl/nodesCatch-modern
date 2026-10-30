@@ -48,4 +48,4 @@ CI 会在 Android 15 x86_64 模拟器中调用实际 JNI 内核，通过本地 H
 
 内核桥接库：[oviron/libmihomo-android v0.3.12](https://github.com/oviron/libmihomo-android/tree/v0.3.12)，GPL-3.0；内核 [MetaCubeX/mihomo v1.19.33](https://github.com/MetaCubeX/mihomo/tree/v1.19.33)，GPL-3.0。固定 AAR 包含它们的 native 库，发布 APK 时一起分发；对应源码、构建过程和依赖可在上述精确版本获取，并随 APK 发布对应源码归档。
 
-SnakeYAML 2.3、Kotlin 标准库及 Gradle wrapper 使用 Apache-2.0 许可；测试依赖 JUnit 4 使用 EPL-1.0，AndroidX 测试库使用 Apache-2.0。应用不打包测试 APK。
+SnakeYAML 2.5、Kotlin 标准库及 Gradle wrapper 使用 Apache-2.0 许可；测试依赖 JUnit 4 使用 EPL-1.0，AndroidX 测试库使用 Apache-2.0。应用不打包测试 APK。
