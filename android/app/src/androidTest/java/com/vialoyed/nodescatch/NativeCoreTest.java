@@ -5,6 +5,9 @@ import org.junit.Test;
 import org.junit.runner.RunWith;
 import static org.junit.Assert.*;
 import static androidx.test.espresso.Espresso.onView;
+import static androidx.test.espresso.Espresso.onData;
+import static androidx.test.espresso.matcher.RootMatchers.isDialog;
+import static org.hamcrest.CoreMatchers.is;
 import static androidx.test.espresso.matcher.ViewMatchers.withText;
 import static androidx.test.espresso.action.ViewActions.click;
 import static androidx.test.espresso.matcher.ViewMatchers.withId;
@@ -38,7 +41,7 @@ import java.util.concurrent.*;
         java.lang.reflect.Field field=MainActivity.class.getDeclaredField("nodes");field.setAccessible(true);Nodes.Node probe=Nodes.parse("anytls://probe@example.com:443#DeleteProbe").get(0);
         try{
             instrumentation.runOnMainSync(()->{try{List<Nodes.Node> list=(List<Nodes.Node>)field.get(activity);for(Nodes.Node n:list)n.selected=false;list.add(probe);java.lang.reflect.Method refresh=MainActivity.class.getDeclaredMethod("refresh");refresh.setAccessible(true);refresh.invoke(activity);}catch(Exception e){throw new RuntimeException(e);}});
-            onView(withText("更多")).perform(click());onView(withText("删除选中节点")).perform(click());onView(withText("删除")).perform(click());
+            onView(withText("更多")).perform(click());onData(is("删除选中节点")).inRoot(isDialog()).perform(click());onView(withId(android.R.id.button1)).perform(click());
             instrumentation.runOnMainSync(()->{try{assertFalse(((List<?>)field.get(activity)).contains(probe));}catch(Exception e){throw new RuntimeException(e);}});
         }finally{instrumentation.runOnMainSync(activity::finish);}
     }
