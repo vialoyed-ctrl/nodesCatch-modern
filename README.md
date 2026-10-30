@@ -2,7 +2,7 @@
 
 Windows 代理节点延迟、下载测速和导出工具。基于 [AHackerX/nodesCatchNext](https://github.com/AHackerX/nodesCatchNext) 维护版源码继续修改，原项目源自不良林的 nodesCatch V2.0。保留上游 MIT 许可与署名。
 
-**安卓预览版：**独立的节点导入、测速、排序和导出 APK，Android 8.0 起，无需 Root、无需运行其他代理客户端。[安卓说明与源码](android/README.md) · [安卓 APK 下载](https://github.com/vialoyed-ctrl/nodesCatch-modern/releases/tag/android-v0.1.3)。安卓子项目使用 GPL-3.0，Windows 项目继续使用 MIT。
+**安卓预览版：**独立的节点导入、测速、排序和导出 APK，Android 8.0 起，无需 Root、无需运行其他代理客户端。[安卓说明与源码](android/README.md) · [安卓 APK 下载](https://github.com/vialoyed-ctrl/nodesCatch-modern/releases/tag/android-v0.1.4)。安卓子项目使用 GPL-3.0，Windows 项目继续使用 MIT。
 
 ## 下载与启动
 
@@ -79,3 +79,4 @@ GitHub Actions 会构建并验证导出，产物只包含明确允许的程序�
 ## 许可与致谢
 
 应用源码使用 [MIT](LICENSE)。感谢 [不良林](https://bulianglin.com/archives/nodescatch.html)、[AHackerX/nodesCatchNext](https://github.com/AHackerX/nodesCatchNext)、[MetaCubeX/mihomo](https://github.com/MetaCubeX/mihomo) 和 Newtonsoft.Json。依赖遵循各自许可，见 [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md)。
+
