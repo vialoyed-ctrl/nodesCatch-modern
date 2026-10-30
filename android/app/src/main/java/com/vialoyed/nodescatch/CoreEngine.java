@@ -30,7 +30,7 @@ public final class CoreEngine {
     public void prepare(List<Nodes.Node> selected) throws Exception {
         Clash.INSTANCE.load(context.getApplicationInfo().nativeLibraryDir);Clash.INSTANCE.assertReady();
         File home=new File(context.getFilesDir(),"core");if(!home.exists()&&!home.mkdirs())throw new IOException("无法创建内核目录");
-        try(FileOutputStream out=new FileOutputStream(new File(home,"config.yaml"))){out.write(Nodes.configuration(selected,false).toString().getBytes(StandardCharsets.UTF_8));}
+        try(FileOutputStream out=new FileOutputStream(new File(home,"config.yaml"))){out.write(Nodes.yaml(Nodes.configuration(selected,false)).getBytes(StandardCharsets.UTF_8));}
         CompletableFuture<String> ready=new CompletableFuture<>();
         JSONObject init=new JSONObject().put("home-dir",home.getAbsolutePath()).put("version",Build.VERSION.SDK_INT);
         Clash.INSTANCE.quickSetup(init.toString(),"{}",(InvokeInterface)value->ready.complete(value==null?"":value));

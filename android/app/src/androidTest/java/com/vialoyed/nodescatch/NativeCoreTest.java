@@ -4,6 +4,9 @@ import androidx.test.platform.app.InstrumentationRegistry;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 import static org.junit.Assert.*;
+import static androidx.test.espresso.Espresso.onView;
+import static androidx.test.espresso.matcher.ViewMatchers.withText;
+import static androidx.test.espresso.action.ViewActions.click;
 import org.json.*;
 import java.io.*;
 import java.net.*;
@@ -12,6 +15,16 @@ import java.util.*;
 import java.util.concurrent.*;
 
 @RunWith(AndroidJUnit4.class) public class NativeCoreTest {
+    @Test public void selectedNodeCanBeDeletedFromMenu() throws Exception {
+        android.app.Instrumentation instrumentation=InstrumentationRegistry.getInstrumentation();
+        MainActivity activity=(MainActivity)instrumentation.startActivitySync(new android.content.Intent(instrumentation.getTargetContext(),MainActivity.class).addFlags(android.content.Intent.FLAG_ACTIVITY_NEW_TASK));
+        java.lang.reflect.Field field=MainActivity.class.getDeclaredField("nodes");field.setAccessible(true);Nodes.Node probe=Nodes.parse("anytls://probe@example.com:443#DeleteProbe").get(0);
+        try{
+            instrumentation.runOnMainSync(()->{try{List<Nodes.Node> list=(List<Nodes.Node>)field.get(activity);for(Nodes.Node n:list)n.selected=false;list.add(probe);java.lang.reflect.Method refresh=MainActivity.class.getDeclaredMethod("refresh");refresh.setAccessible(true);refresh.invoke(activity);}catch(Exception e){throw new RuntimeException(e);}});
+            onView(withText("更多")).perform(click());onView(withText("删除选中节点")).perform(click());onView(withText("删除")).perform(click());
+            instrumentation.runOnMainSync(()->{try{assertFalse(((List<?>)field.get(activity)).contains(probe));}catch(Exception e){throw new RuntimeException(e);}});
+        }finally{instrumentation.runOnMainSync(activity::finish);}
+    }
     @Test public void windowsEncodedFilesImport() throws Exception {
         String json="{\"proxies\":[{\"name\":\"Windows 导出\",\"type\":\"anytls\",\"server\":\"example.com\",\"port\":443,\"password\":\"probe\"}]}";
         for(java.nio.charset.Charset charset:new java.nio.charset.Charset[]{StandardCharsets.UTF_8,StandardCharsets.UTF_16LE,StandardCharsets.UTF_16BE}){
@@ -53,7 +66,8 @@ import java.util.concurrent.*;
             List<Nodes.Node> modern=Nodes.parse("vless://00000000-0000-4000-8000-000000000001@example.com:443?security=reality&pbk=AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA&sid=&fp=chrome#Reality\n"
                 +"hy2://password@example.com:443?obfs=salamander&obfs-password=test#HY2\n"
                 +"anytls://password@example.com:443?sni=example.com#AnyTLS\n"
-                +"ss://MjAyMi1ibGFrZTMtYWVzLTEyOC1nY206QUFBQUFBQUFBQUFBQUFBQUFBQUFBQT09@example.com:443#SS2022");
+                +"ss://MjAyMi1ibGFrZTMtYWVzLTEyOC1nY206QUFBQUFBQUFBQUFBQUFBQUFBQUFBQT09@example.com:443#SS2022\n"
+                +"trojan://password@example.com:443?security=tls&type=ws&path=%2Fws%2Fhello#WebSocket");
             engine.prepare(modern);
             engine.run(nodes,false,"http://192.0.2.1/ping?a=1&b=2",3,1,3000,progress);
             assertTrue("Real native delay failed: "+nodes.get(0).status,nodes.get(0).delay>=0);

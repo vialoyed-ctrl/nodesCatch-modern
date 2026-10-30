@@ -47,4 +47,8 @@ public class NodesTest {
         assertEquals("Windows 导出",Nodes.parse(json).get(0).name());
         assertEquals(1,Nodes.parse("\uFEFF"+Base64.getEncoder().encodeToString(json.getBytes(StandardCharsets.UTF_8))).size());
     }
+    @Test public void yamlSerializationPreservesSlashesAndBackslashes() throws Exception {
+        JSONObject config=new JSONObject().put("path","/ws/hello").put("password","a\\/b\\\\/c");
+        JSONObject round=new JSONObject(Nodes.yaml(config));assertEquals(config.getString("path"),round.getString("path"));assertEquals(config.getString("password"),round.getString("password"));
+    }
 }

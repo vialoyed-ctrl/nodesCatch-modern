@@ -29,6 +29,17 @@ public final class Nodes {
         }
     }
     public static String speed(double bytes) { return bytes < 0 ? "—" : String.format(Locale.US,"%.2fMB/s",bytes/1048576.0); }
+    public static String yaml(JSONObject config) throws Exception {
+        // Android JSONObject escapes '/' as '\/'. That is valid JSON but
+        // rejected by Mihomo's YAML reader. Unescaped '/' preserves the value.
+        String raw=config.toString(2);StringBuilder out=new StringBuilder();int backslashes=0;
+        for(int i=0;i<raw.length();i++){
+            char c=raw.charAt(i);
+            if(c=='/'&&(backslashes&1)==1)out.setLength(out.length()-1);
+            out.append(c);backslashes=c=='\\'?backslashes+1:0;
+        }
+        return out.toString();
+    }
     public static String exportName(Node n) {
         if(n.average<0) return n.name();
         return speed(n.average)+" "+n.name().replaceFirst("^\\d+(?:[.,]\\d+)?\\s*(?:GB/s|MB/s|KB/s|B/s)\\s+","");
