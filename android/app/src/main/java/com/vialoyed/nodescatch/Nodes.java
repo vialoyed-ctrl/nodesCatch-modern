@@ -15,17 +15,21 @@ public final class Nodes {
         public String source = "";
         public JSONObject proxy;
         public boolean selected = true;
-        public long delay = -1;
-        public double average = -1, peak = -1;
-        public String status = "未测速";
+        public volatile long delay = -1;
+        public volatile double average = -1, peak = -1;
+        public volatile int delayState=TestState.IDLE,speedState=TestState.IDLE;
+        public volatile String status = "未测速";
         public String name() { return proxy.optString("name", "未命名节点"); }
         public String type() { return proxy.optString("type").toUpperCase(Locale.ROOT); }
         public JSONObject save() throws Exception {
-            return new JSONObject().put("id",id).put("source",source).put("proxy",proxy).put("selected",selected).put("delay",delay).put("average",average).put("peak",peak).put("status",status);
+            return new JSONObject().put("id",id).put("source",source).put("proxy",proxy).put("selected",selected).put("delay",delay).put("average",average).put("peak",peak).put("status",status).put("delayState",delayState).put("speedState",speedState);
         }
         public static Node load(JSONObject o) throws Exception {
             Node n=new Node(); n.id=o.getString("id"); n.source=o.optString("source"); n.proxy=o.getJSONObject("proxy"); n.selected=o.optBoolean("selected",true);
-            n.delay=o.optLong("delay",-1); n.average=o.optDouble("average",-1); n.peak=o.optDouble("peak",-1); n.status=o.optString("status","未测速"); return n;
+            n.delay=o.optLong("delay",-1); n.average=o.optDouble("average",-1); n.peak=o.optDouble("peak",-1); n.status=o.optString("status","未测速");
+            int oldDelay=n.delay>=0?TestState.SUCCESS:(n.status.contains("延迟失败")||n.status.contains("无法连接")?TestState.FAILED:TestState.IDLE);
+            int oldSpeed=n.average>=0?TestState.SUCCESS:(n.status.contains("下载失败")||n.status.contains("下载超时")||n.status.startsWith("HTTP ")?TestState.FAILED:TestState.IDLE);
+            n.delayState=TestState.restored(o.optInt("delayState",oldDelay));n.speedState=TestState.restored(o.optInt("speedState",oldSpeed));return n;
         }
     }
     public static String speed(double bytes) { return bytes < 0 ? "—" : String.format(Locale.US,"%.2fMB/s",bytes/1048576.0); }

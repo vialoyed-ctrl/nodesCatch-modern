@@ -57,6 +57,8 @@ jobs:
             adb install android/app/build/outputs/apk/androidTest/debug/app-debug-androidTest.apk
             adb shell am instrument -w com.vialoyed.nodescatch.test/androidx.test.runner.AndroidJUnitRunner | tee android/instrumentation.txt
             grep -q 'OK (' android/instrumentation.txt
+            adb pull /sdcard/Android/data/com.vialoyed.nodescatch/files/light.png android/light.png
+            adb pull /sdcard/Android/data/com.vialoyed.nodescatch/files/dark.png android/dark.png
             adb shell am start -n com.vialoyed.nodescatch/.MainActivity
             sleep 3
             adb exec-out screencap -p > android/screenshot.png
@@ -70,3 +72,5 @@ jobs:
             android/app/build/test-results/testDebugUnitTest/
             android/instrumentation.txt
             android/screenshot.png
+            android/light.png
+            android/dark.png

@@ -99,8 +99,20 @@ import java.util.concurrent.*;
             JSONObject export=Nodes.configuration(nodes,true);assertEquals("DOMAIN-SUFFIX,qq.com,DIRECT",export.getJSONArray("rules").getString(0));
         } finally {engine.cancel();proxy.close();server.shutdownNow();}
     }
+    @Test public void parallelNativeDownloadsAndFailureStates() throws Exception {
+        ServerSocket proxy=new ServerSocket(0,20,InetAddress.getByName("127.0.0.1"));ExecutorService server=Executors.newCachedThreadPool();
+        java.util.concurrent.atomic.AtomicInteger active=new java.util.concurrent.atomic.AtomicInteger(),maximum=new java.util.concurrent.atomic.AtomicInteger();CountDownLatch pair=new CountDownLatch(2);
+        server.execute(()->{while(!proxy.isClosed()){try{Socket socket=proxy.accept();server.execute(()->{int n=active.incrementAndGet();maximum.accumulateAndGet(n,Math::max);pair.countDown();try{if(!pair.await(3,TimeUnit.SECONDS))throw new IOException("No concurrent requests");serve(socket);}catch(Exception ignored){}finally{active.decrementAndGet();}});}catch(IOException ignored){break;}}});
+        CoreEngine engine=new CoreEngine(InstrumentationRegistry.getInstrumentation().getTargetContext());List<Nodes.Node> nodes=new ArrayList<>();for(int i=0;i<4;i++){Nodes.Node n=Nodes.parse("http://127.0.0.1:"+proxy.getLocalPort()+"#Concurrent"+i).get(0);n.delay=123;n.delayState=TestState.SUCCESS;nodes.add(n);}
+        CoreEngine.Progress progress=new CoreEngine.Progress(){public void changed(Nodes.Node n){}public void message(String m){}};
+        try{
+            engine.run(nodes,true,"http://192.0.2.1/download",5,1,3000,2,progress);
+            assertTrue("No parallel native downloads",maximum.get()>=2);for(Nodes.Node n:nodes){assertEquals(n.status,TestState.SUCCESS,n.speedState);assertEquals(TestState.SUCCESS,n.delayState);assertTrue(n.status.contains("1.0MB"));}
+            engine.run(nodes.subList(0,1),true,"http://192.0.2.1/forbidden",3,1,3000,1,progress);assertEquals(TestState.FAILED,nodes.get(0).speedState);assertEquals(TestState.SUCCESS,nodes.get(0).delayState);assertTrue(nodes.get(0).status.contains("403"));
+        }finally{engine.cancel();proxy.close();server.shutdownNow();}
+    }
     private static void serve(Socket socket){try(Socket s=socket){s.setSoTimeout(6000);InputStream in=s.getInputStream();OutputStream out=s.getOutputStream();String request=line(in);while(!line(in).isEmpty()){}if(request.startsWith("CONNECT ")){out.write("HTTP/1.1 200 Connection Established\r\n\r\n".getBytes(StandardCharsets.US_ASCII));out.flush();request=line(in);while(!line(in).isEmpty()){}}
-        boolean ping=request.contains("/ping");int count=ping?0:2*1024*1024;out.write(("HTTP/1.1 "+(ping?"204 No Content":"200 OK")+"\r\nContent-Length: "+count+"\r\nConnection: close\r\n\r\n").getBytes(StandardCharsets.US_ASCII));byte[] chunk=new byte[16384];for(int n=0;n<count;n+=chunk.length){out.write(chunk);out.flush();Thread.sleep(5);}
+        if(request.contains("/forbidden")){out.write("HTTP/1.1 403 Forbidden\r\nContent-Length: 0\r\nConnection: close\r\n\r\n".getBytes(StandardCharsets.US_ASCII));return;}boolean ping=request.contains("/ping");int count=ping?0:2*1024*1024;out.write(("HTTP/1.1 "+(ping?"204 No Content":"200 OK")+"\r\nContent-Length: "+count+"\r\nConnection: close\r\n\r\n").getBytes(StandardCharsets.US_ASCII));byte[] chunk=new byte[16384];for(int n=0;n<count;n+=chunk.length){out.write(chunk);out.flush();Thread.sleep(5);}
     }catch(Exception ignored){}}
     private static String line(InputStream in)throws IOException{ByteArrayOutputStream bytes=new ByteArrayOutputStream();for(int c;(c=in.read())!=-1;){if(c=='\n')break;if(c!='\r')bytes.write(c);if(bytes.size()>16384)throw new IOException("Header too long");}return bytes.toString("US-ASCII");}
 }
